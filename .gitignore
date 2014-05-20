@@ -1,9 +1,9 @@
 /build
-/gwpy.egg-info
+/gwdv.egg-info
 /dist
 /docs/_build
 /docs/_generated
-/gwpy/version.py
+/gwdv/version.py
 *.pyc
 *.so
 *.swp
