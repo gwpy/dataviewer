@@ -1,0 +1,12 @@
+/build
+/gwpy.egg-info
+/dist
+/docs/_build
+/docs/_generated
+/gwpy/version.py
+*.pyc
+*.so
+*.swp
+.DS_Store
+/examples/*.png
+/.idea
