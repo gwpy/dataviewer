@@ -19,5 +19,9 @@
 """GWDV: The gravitational-wave data viewer
 """
 
+from . import version
+
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __credits__ = 'The LIGO Laboratory, and the LIGO Scientific Collaboration'
+__version__ = version.version
+

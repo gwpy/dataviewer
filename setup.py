@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-# coding=utf-8
-# Copyright (C) Duncan Macleod (2014)
+# -*- coding: utf-8 -*-
+# Copyright (C) Duncan Macleod (2013)
 #
 # This file is part of GWDV.
 #
@@ -17,9 +17,33 @@
 # You should have received a copy of the GNU General Public License
 # along with GWDV.  If not, see <http://www.gnu.org/licenses/>.
 
+"""Setup the GWDV package
+"""
+
+from __future__ import print_function
+
+import sys
+if sys.version < '2.6':
+    raise ImportError("Python versions older than 2.6 are not supported.")
+
 import glob
+import hashlib
 import os.path
-from setuptools import (setup, find_packages)
+import subprocess
+
+try:
+    import setuptools
+except ImportError:
+    import ez_setup
+    ez_setup.use_setuptools()
+finally:
+    from setuptools import (setup, find_packages)
+    from setuptools.command import (build_py, egg_info)
+
+from distutils import log
+from distutils.dist import Distribution
+from distutils.cmd import Command
+from distutils.command.clean import (clean, log, remove_tree)
 
 # test for OrderedDict
 extra_install_requires = []
@@ -28,29 +52,235 @@ try:
 except ImportError:
     extra_install_requires.append('ordereddict>=1.1')
 
-# import version generator
-version = __import__('utils.version', fromlist=[''])
+# import sphinx commands
+try:
+    from sphinx.setup_command import BuildDoc
+except ImportError:
+    cmdclass = {}
+else:
+    cmdclass = {'build_sphinx': BuildDoc}
 
+# set basic metadata
 PACKAGENAME = 'gwdv'
-DESCRIPTION = 'GWDV: The Gravitational-Wave Data Viewer'
-LONG_DESCRIPTION = ''
 AUTHOR = 'Duncan Macleod'
 AUTHOR_EMAIL = 'duncan.macleod@ligo.org'
 LICENSE = 'GPLv3'
 
-# set version information
-VERSION_PY = '%s/version.py' % PACKAGENAME
-vcinfo = version.GitStatus()
-vcinfo(VERSION_PY, PACKAGENAME, AUTHOR, AUTHOR_EMAIL)
+VERSION_PY = os.path.join(PACKAGENAME, 'version.py')
 
-# VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-VERSION = vcinfo.version
 
-# Indicates if this version is a release version
-RELEASE = vcinfo.version != vcinfo.id and 'dev' not in VERSION
+# -----------------------------------------------------------------------------
+# Clean up, including Sphinx, and setup_requires eggs
+
+class GWDVClean(clean):
+    def run(self):
+        if self.all:
+            # remove docs
+            sphinx_dir = os.path.join(self.build_base, 'sphinx')
+            if os.path.exists(sphinx_dir):
+                remove_tree(sphinx_dir, dry_run=self.dry_run)
+            else:
+                log.warn("%r does not exist -- can't clean it", sphinx_dir)
+            # remove version.py
+            for vpy in [VERSION_PY, VERSION_PY + 'c']:
+                if os.path.exists(vpy) and not self.dry_run:
+                    log.info('removing %r' % vpy)
+                    os.unlink(vpy)
+                elif not os.path.exists(vpy):
+                    log.warn("%r does not exist -- can't clean it", vpy)
+            # remove setup eggs
+            for egg in glob.glob('*.egg'):
+                if os.path.isdir(egg):
+                    remove_tree(egg, dry_run=self.dry_run)
+                else:
+                    log.info('removing %r' % egg)
+                    os.unlink(egg)
+            # remove Portfile
+            portfile = 'Portfile'
+            if os.path.exists(portfile) and not self.dry_run:
+                log.info('removing %r' % portfile)
+                os.unlink(portfile)
+        clean.run(self)
+
+cmdclass['clean'] = GWDVClean
+
+
+# -----------------------------------------------------------------------------
+# Custom builders to write version.py
+
+class GitVersionMixin(object):
+    """Mixin class to add methods to generate version information from git.
+    """
+    def write_version_py(self, pyfile):
+        """Generate target file with versioning information from git VCS
+        """
+        log.info("generating %s" % pyfile)
+        import vcs
+        gitstatus = vcs.GitStatus()
+        try:
+            with open(pyfile, 'w') as fobj:
+                gitstatus.write(fobj, author=AUTHOR, email=AUTHOR_EMAIL)
+        except:
+            if os.path.exists(pyfile):
+                os.unlink(pyfile)
+            raise
+        return gitstatus
+
+    def update_metadata(self):
+        """Import package base and update distribution metadata
+        """
+        import gwdv
+        self.distribution.metadata.version = gwdv.__version__
+        desc, longdesc = gwdv.__doc__.split('\n', 1)
+        self.distribution.metadata.description = desc
+        self.distribution.metadata.long_description = longdesc.strip('\n')
+
+
+class GWDVBuildPy(build_py.build_py, GitVersionMixin):
+    """Custom build_py command to deal with version generation
+    """
+    def __init__(self, *args, **kwargs):
+        build_py.build_py.__init__(self, *args, **kwargs)
+
+    def run(self):
+        try:
+            self.write_version_py(VERSION_PY)
+        except ImportError:
+            raise
+        except:
+            if not os.path.isfile(VERSION_PY):
+                raise
+        self.update_metadata()
+        build_py.build_py.run(self)
+
+cmdclass['build_py'] = GWDVBuildPy
+
+
+class GWDVEggInfo(egg_info.egg_info, GitVersionMixin):
+    """Custom egg_info command to deal with version generation
+    """
+    def finalize_options(self):
+        try:
+            self.write_version_py(VERSION_PY)
+        except ImportError:
+            raise
+        except:
+            if not os.path.isfile(VERSION_PY):
+                raise
+        if not self.distribution.metadata.version:
+            self.update_metadata()
+        egg_info.egg_info.finalize_options(self)
+
+cmdclass['egg_info'] = GWDVEggInfo
+
+
+# -----------------------------------------------------------------------------
+# Build Portfile
+
+class BuildPortfile(Command, GitVersionMixin):
+    """Generate a Macports Portfile for this project from the current build
+    """
+    description = 'Generate Macports Portfile'
+    user_options = [
+       ('version=', None, 'the X.Y.Z package version'),
+       ('portfile=', None, 'target output file, default: \'Portfile\''),
+       ('template=', None, 'Portfile template, default: \'Portfile.template\''),
+    ]
+
+    def initialize_options(self):
+        self.version = None
+        self.portfile = 'Portfile'
+        self.template = 'Portfile.template'
+        self._template = None
+
+    def finalize_options(self):
+        from jinja2 import Template
+        with open(self.template, 'r') as t:
+            self._template = Template(t.read())
+
+    def run(self):
+        # get version from distribution
+        if self.version is None:
+            try:
+                self.update_metadata()
+            except ImportError:
+                self.run_command('sdist')
+                self.update_metadata()
+        # find dist file
+        dist = os.path.join(
+            'dist',
+            '%s-%s.tar.gz' % (self.distribution.get_name(),
+                              self.distribution.get_version()))
+        # run sdist if needed
+        if not os.path.isfile(dist):
+            self.run_command('sdist')
+            self.update_metadata()
+        # get checksum digests
+        log.info('reading distribution tarball %r' % dist)
+        with open(dist, 'rb') as fobj:
+            data = fobj.read()
+        log.info('recovered digests:')
+        digest = dict()
+        digest['rmd160'] = self._get_rmd160(dist)
+        for algo in [1, 256]:
+            digest['sha%d' % algo] = self._get_sha(data, algo)
+        for key, val in digest.iteritems():
+            log.info('    %s: %s' % (key, val))
+        # write finished portfile to file
+        with open(self.portfile, 'w') as fport:
+            fport.write(self._template.render(
+                version=self.distribution.get_version(), **digest))
+        log.info('portfile written to %r' % self.portfile)
+
+    @staticmethod
+    def _get_sha(data, algorithm=256):
+        hash_ = getattr(hashlib, 'sha%d' % algorithm)
+        return hash_(data).hexdigest()
+
+    @staticmethod
+    def _get_rmd160(filename):
+        p = subprocess.Popen(['openssl', 'rmd160', filename],
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out, err = p.communicate()
+        if p.returncode != 0:
+            raise subprocess.CalledProcessError(err)
+        else:
+            return out.splitlines()[0].rsplit(' ', 1)[-1]
+
+cmdclass['port'] = BuildPortfile
+
+
+# -----------------------------------------------------------------------------
+# Process complicated dependencies
+
+# XXX: this can be removed as soon as a stable release of glue can
+#      handle pip/--user
+try:
+    from glue import git_version
+except ImportError as e:
+    e.args = ("GWDV requires the GLUE package, which isn\'t available from "
+              "PyPI.\nPlease visit\n"
+              "https://www.lsc-group.phys.uwm.edu/daswg/projects/glue.html\n"
+              "to download and install it manually.",)
+    raise
+
+# don't use setup_requires if just checking for information
+# (credit: matplotlib/setup.py)
+setup_requires = []
+if not '--help' in sys.argv:
+    dist_ = Distribution({'cmdclass': cmdclass})
+    dist_.parse_config_files()
+    dist_.parse_command_line()
+    if not (any('--' + opt in sys.argv for opt in
+            Distribution.display_option_names + ['help']) or
+            dist_.commands == ['clean']):
+        setup_requires = ['tornado', 'numpy >= 1.7', 'jinja2', 'gitpython']
+
+# -----------------------------------------------------------------------------
+# Find files
 
 # Use the find_packages tool to locate all packages and modules
-packagenames = find_packages(exclude=['utils', 'utils.*'])
+packagenames = find_packages()
 
 # glob for all scripts
 if os.path.isdir('bin'):
@@ -58,18 +288,48 @@ if os.path.isdir('bin'):
 else:
     scripts = []
 
+# -----------------------------------------------------------------------------
+# run setup
+
 setup(name=PACKAGENAME,
-      version=VERSION,
-      description=DESCRIPTION,
-      packages=packagenames,
-      ext_modules=[],
-      scripts=scripts,
-      install_requires=['gwpy'] + extra_install_requires,
       provides=[PACKAGENAME],
+      version=None,
+      description=None,
+      long_description=None,
       author=AUTHOR,
       author_email=AUTHOR_EMAIL,
       license=LICENSE,
-      long_description=LONG_DESCRIPTION,
-      zip_safe=False,
+      packages=packagenames,
+      include_package_data=True,
+      cmdclass=cmdclass,
+      scripts=scripts,
+      setup_requires=setup_requires,
+      requires=[
+          'glue',
+          'gwpy',
+          'nds2',
+      ],
+      install_requires=[
+      ],
+      dependency_links=[
+          'https://www.lsc-group.phys.uwm.edu/daswg/download/'
+              'software/source/glue-1.46.tar.gz#egg=glue-1.46',
+      ],
+      test_suite='gwdv.tests',
       use_2to3=False,
+      classifiers=[
+          'Programming Language :: Python',
+          'Development Status :: 3 - Alpha',
+          'Intended Audience :: Science/Research',
+          'Intended Audience :: End Users/Desktop',
+          'Intended Audience :: Developers',
+          'Natural Language :: English',
+          'Topic :: Scientific/Engineering',
+          'Topic :: Scientific/Engineering :: Astronomy',
+          'Topic :: Scientific/Engineering :: Physics',
+          'Operating System :: POSIX',
+          'Operating System :: Unix',
+          'Operating System :: MacOS',
+          'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+      ],
       )
