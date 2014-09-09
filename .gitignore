@@ -3,7 +3,7 @@
 /dist
 /docs/_build
 /docs/_generated
-/gwdv/version.py
+/gwpy/toolkits/dataviewer/version.py
 *.pyc
 *.so
 *.swp
