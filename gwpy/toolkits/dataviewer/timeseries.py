@@ -28,6 +28,8 @@ from .data import DataMonitor
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __version__ = version.version
 
+__all__ = ['TimeSeriesMonitor']
+
 
 class TimeSeriesMonitor(DataMonitor):
     """Monitor some time-series data
