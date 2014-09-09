@@ -1,5 +1,5 @@
 /build
-/gwdv.egg-info
+/*.egg-info
 /dist
 /docs/_build
 /docs/_generated

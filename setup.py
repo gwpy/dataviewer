@@ -2,22 +2,22 @@
 # -*- coding: utf-8 -*-
 # Copyright (C) Duncan Macleod (2013)
 #
-# This file is part of GWDV.
+# This file is part of GWpyDataViewer.
 #
-# GWDV is free software: you can redistribute it and/or modify
+# GWpyDataViewer is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
 # (at your option) any later version.
 #
-# GWDV is distributed in the hope that it will be useful,
+# GWpyDataViewer is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with GWDV.  If not, see <http://www.gnu.org/licenses/>.
+# along with GWpyDataViewer.  If not, see <http://www.gnu.org/licenses/>.
 
-"""Setup the GWDV package
+"""Setup the GWpyDataViewer package
 """
 
 from __future__ import print_function
@@ -61,18 +61,19 @@ else:
     cmdclass = {'build_sphinx': BuildDoc}
 
 # set basic metadata
-PACKAGENAME = 'gwdv'
+PACKAGENAME = 'dataviewer'
+DISTNAME = 'gwpy-%s' % PACKAGENAME
 AUTHOR = 'Duncan Macleod'
 AUTHOR_EMAIL = 'duncan.macleod@ligo.org'
 LICENSE = 'GPLv3'
 
-VERSION_PY = os.path.join(PACKAGENAME, 'version.py')
+VERSION_PY = os.path.join('gwpy', 'toolkits', PACKAGENAME, 'version.py')
 
 
 # -----------------------------------------------------------------------------
 # Clean up, including Sphinx, and setup_requires eggs
 
-class GWDVClean(clean):
+class GWpyDataViewerClean(clean):
     def run(self):
         if self.all:
             # remove docs
@@ -102,7 +103,7 @@ class GWDVClean(clean):
                 os.unlink(portfile)
         clean.run(self)
 
-cmdclass['clean'] = GWDVClean
+cmdclass['clean'] = GWpyDataViewerClean
 
 
 # -----------------------------------------------------------------------------
@@ -129,14 +130,14 @@ class GitVersionMixin(object):
     def update_metadata(self):
         """Import package base and update distribution metadata
         """
-        import gwdv
-        self.distribution.metadata.version = gwdv.__version__
-        desc, longdesc = gwdv.__doc__.split('\n', 1)
+        from gwpy.toolkits import dataviewer
+        self.distribution.metadata.version = dataviewer.__version__
+        desc, longdesc = dataviewer.__doc__.split('\n', 1)
         self.distribution.metadata.description = desc
         self.distribution.metadata.long_description = longdesc.strip('\n')
 
 
-class GWDVBuildPy(build_py.build_py, GitVersionMixin):
+class GWpyDataViewerBuildPy(build_py.build_py, GitVersionMixin):
     """Custom build_py command to deal with version generation
     """
     def __init__(self, *args, **kwargs):
@@ -153,10 +154,10 @@ class GWDVBuildPy(build_py.build_py, GitVersionMixin):
         self.update_metadata()
         build_py.build_py.run(self)
 
-cmdclass['build_py'] = GWDVBuildPy
+cmdclass['build_py'] = GWpyDataViewerBuildPy
 
 
-class GWDVEggInfo(egg_info.egg_info, GitVersionMixin):
+class GWpyDataViewerEggInfo(egg_info.egg_info, GitVersionMixin):
     """Custom egg_info command to deal with version generation
     """
     def finalize_options(self):
@@ -171,7 +172,7 @@ class GWDVEggInfo(egg_info.egg_info, GitVersionMixin):
             self.update_metadata()
         egg_info.egg_info.finalize_options(self)
 
-cmdclass['egg_info'] = GWDVEggInfo
+cmdclass['egg_info'] = GWpyDataViewerEggInfo
 
 
 # -----------------------------------------------------------------------------
@@ -258,7 +259,7 @@ cmdclass['port'] = BuildPortfile
 try:
     from glue import git_version
 except ImportError as e:
-    e.args = ("GWDV requires the GLUE package, which isn\'t available from "
+    e.args = ("GWpyDataViewer requires the GLUE package, which isn\'t available from "
               "PyPI.\nPlease visit\n"
               "https://www.lsc-group.phys.uwm.edu/daswg/projects/glue.html\n"
               "to download and install it manually.",)
@@ -291,7 +292,7 @@ else:
 # -----------------------------------------------------------------------------
 # run setup
 
-setup(name=PACKAGENAME,
+setup(name=DISTNAME,
       provides=[PACKAGENAME],
       version=None,
       description=None,
@@ -315,7 +316,7 @@ setup(name=PACKAGENAME,
           'https://www.lsc-group.phys.uwm.edu/daswg/download/'
               'software/source/glue-1.46.tar.gz#egg=glue-1.46',
       ],
-      test_suite='gwdv.tests',
+      namespace_packages=['gwpy', 'gwpy.toolkits'],
       use_2to3=False,
       classifiers=[
           'Programming Language :: Python',
