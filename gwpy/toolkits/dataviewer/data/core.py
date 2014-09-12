@@ -19,8 +19,6 @@
 """This module defines mixin classes for different data sources
 """
 
-from __future__ import print_function
-
 import abc
 from collections import (OrderedDict, defaultdict)
 
@@ -53,14 +51,15 @@ class DataMonitor(Monitor):
     def __init__(self, *channels, **kwargs):
         self.logger = kwargs.pop('logger', Logger('monitor'))
         self.epoch = tconvert('now')
+        labels = kwargs.pop('labels', [None] * len(channels))
 
         # setup channels
         self._channels = OrderedDict()
-        for c in channels:
+        for c, label in zip(channels, labels):
             if isinstance(c, (list, tuple)):
-                self.add_channel(*c)
+                self.add_channel(*c, label=label)
             else:
-                self.add_channel(c)
+                self.add_channel(c, label=label)
 
         # connect to data source
         self.connect()
@@ -77,11 +76,12 @@ class DataMonitor(Monitor):
     def frametypes(self):
         return set(self._channels.values())
 
-    def add_channel(self, channel, frametype=None):
+    def add_channel(self, channel, frametype=None, label=None):
         if len(self.channels) == self.MAX_CHANNELS:
             raise ValueError("%s cannot hold more than %d channels."
                              % (type(self), self.MAX_CHANNELS))
         c = Channel(channel)
+        c.label = label or c.texname
         if frametype is None:
             frametype = '%s_%s' % (c.ifo, NDS2_FRAME_TYPE[c.type])
         self._channels[c] = frametype
@@ -96,7 +96,8 @@ class DataMonitor(Monitor):
     def _draw_frame(self, data):
         new = self.read_data(data)
         self.update_data(new)
-        self.refresh()
+        if not self.paused:
+            self.refresh()
 
     @abc.abstractmethod
     def update_data(self):
