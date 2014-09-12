@@ -86,7 +86,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # set up first iteration
         lines = [l for ax in self._fig.axes for l in ax.lines]
         if len(lines) == 0:
-            axes = cycle(self._fig.axes)
+            axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
             params = self.params['draw']
             for i, channel in enumerate(self.spectra):
                 ax = next(axes)
