@@ -52,14 +52,15 @@ class DataMonitor(Monitor):
         self.logger = kwargs.pop('logger', Logger('monitor'))
         self.epoch = tconvert('now')
         labels = kwargs.pop('labels', [None] * len(channels))
+        filters = kwargs.pop('filters', [None] * len(channels))
 
         # setup channels
         self._channels = OrderedDict()
-        for c, label in zip(channels, labels):
+        for c, label, filter in zip(channels, labels, filters):
             if isinstance(c, (list, tuple)):
-                self.add_channel(*c, label=label)
+                self.add_channel(*c, label=label, filter=filter)
             else:
-                self.add_channel(c, label=label)
+                self.add_channel(c, label=label, filter=filter)
 
         # connect to data source
         self.connect()
@@ -76,12 +77,13 @@ class DataMonitor(Monitor):
     def frametypes(self):
         return set(self._channels.values())
 
-    def add_channel(self, channel, frametype=None, label=None):
+    def add_channel(self, channel, frametype=None, label=None, filter=None): #add filtering options here
         if len(self.channels) == self.MAX_CHANNELS:
             raise ValueError("%s cannot hold more than %d channels."
                              % (type(self), self.MAX_CHANNELS))
         c = Channel(channel)
         c.label = label or c.texname
+        c.filter = filter
         if frametype is None:
             frametype = '%s_%s' % (c.ifo, NDS2_FRAME_TYPE[c.type])
         self._channels[c] = frametype
