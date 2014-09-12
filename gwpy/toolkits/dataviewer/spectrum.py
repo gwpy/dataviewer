@@ -107,3 +107,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.set_params('refresh')
         self._fig.refresh()
         self.logger.debug('Figure refreshed')
+        if self.save_count % self.save_every == 0:
+            self._fig.save(self.figname)
+        self.save_count += 1

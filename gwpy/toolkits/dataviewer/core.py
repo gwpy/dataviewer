@@ -58,7 +58,8 @@ class Monitor(TimedAnimation):
     # Initialise the figure
 
     def __init__(self, fig=None, interval=1, blit=True, repeat=False,
-                 logger=Logger('monitor'), **kwargs):
+                 logger=Logger('monitor'), figname=None, save_every=1,
+                 **kwargs):
         # pick up refresh
         kwargs = self.parse_params(kwargs)
         # set up figure
@@ -67,6 +68,12 @@ class Monitor(TimedAnimation):
         # generate monitor
         super(Monitor, self).__init__(fig, interval=int(interval * 1000),
                                       blit=blit, repeat=repeat, **kwargs)
+
+        self.figname = figname
+        self.save_every = save_every
+        self.save_count = 0
+        if save_every * interval < 10:
+            self.logger.warning('Saving too often!')
 
         self.logger = logger
 
