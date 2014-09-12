@@ -104,6 +104,7 @@ class NDSDataSource(DataSource):
         self.host = kwargs.pop('host', None)
         self.port = kwargs.pop('port', None)
         self.interval = kwargs.get('interval', 1)
+        kwargs.setdefault('repeat', True)
         super(NDSDataSource, self).__init__(*args, **kwargs)
 
     def connect(self):
@@ -141,8 +142,10 @@ class NDSDataSource(DataSource):
             return super(NDSDataSource, self)._step(*args, **kwargs)
         except RuntimeError as e:
             self.logger.warning('NDS error: %s' % str(e))
-            self._draw_next_frame([], self._blit)
-            return True
+            self.connection = None
+            self.connect()
+            self.frame_seq = self.new_frame_seq()
+            return self._step(*args, **kwargs)
 
     def read_data(self, buffer):
         """Parse the new data from the source into a `TimeSeriesDict`
