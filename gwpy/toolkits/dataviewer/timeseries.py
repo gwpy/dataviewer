@@ -19,6 +19,8 @@
 """Extended functionality for a GWF-file-based monitor
 """
 
+from itertools import cycle
+
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 from gwpy.plotter import (TimeSeriesPlot, TimeSeriesAxes)
 
@@ -34,9 +36,8 @@ __all__ = ['TimeSeriesMonitor']
 class TimeSeriesMonitor(DataMonitor):
     """Monitor some time-series data
     """
-    DATA_TYPE = TimeSeries
-    FIGURE_TYPE = TimeSeriesPlot
-    AXES_TYPE = TimeSeriesAxes
+    FIGURE_CLASS = TimeSeriesPlot
+    AXES_CLASS = TimeSeriesAxes
 
     def __init__(self, *channels, **kwargs):
         try:
@@ -48,15 +49,23 @@ class TimeSeriesMonitor(DataMonitor):
                 raise ValueError("Monitor duration must be given after "
                                  "channels, or as a keyword 'duration=xxx' "
                                  "argument")
+        self.sep = kwargs.pop('separate', False)
         super(TimeSeriesMonitor, self).__init__(*channels, **kwargs)
 
     def init_figure(self):
-        self._fig = self.FIGURE_TYPE()
-        ax = self._fig.gca()
-        ax.set_xlim(float(self.epoch), float(self.epoch) + self.duration)
-        ax.set_epoch(float(self.epoch))
-        self.init_params()
-        self.logger.debug(ax.get_xlim())
+        self._fig = self.FIGURE_CLASS()
+        def _new_axes():
+            ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
+            ax.set_xlim(float(self.epoch), float(self.epoch) + self.duration)
+            ax.set_epoch(float(self.epoch))
+        if self.sep:
+            for channel in self.channels:
+                _new_axes()
+            for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
+                ax.set_xlabel('')
+        else:
+            _new_axes()
+        self.set_params('init')
         return self._fig
 
     @property
@@ -68,25 +77,33 @@ class TimeSeriesMonitor(DataMonitor):
             return self._data
 
     def update_data(self, new):
-        first = not len(self.data.keys())
-        if first:
+        if not self.data:
             self.data.append(new)
-            for channel in self.data:
-                self._fig.gca().plot(self.data[channel])
+        elif abs(self.data[self.channels[0]].span) < self.duration:
+            self.data.append(new, resize=True, gap='pad')
         else:
-            if abs(self.data[self.channels[0]].span) >= self.duration:
-                self.data.append(new, resize=False)
-            else:
-                self.data.append(new, resize=True)
-            for line, channel in zip(self._fig.gca().lines, self.channels):
-                line.set_xdata(self.data[channel].times.data)
-                line.set_ydata(self.data[channel].data)
-        for ax in self._fig.axes:
-            ax.autoscale(axis='y')
-        self.logger.debug('Figure data updated')
+            self.data.append(new, resize=False, gap='pad')
 
     def refresh(self):
-        for ax in self._fig.axes:
+        # set up first iteration
+        lines = [l for ax in self._fig.axes for l in ax.lines]
+        if len(lines) == 0:
+            axes = cycle(self._fig.axes)
+            params = self.params['draw']
+            for i, channel in enumerate(self.data):
+                ax = next(axes)
+                ax.plot(self.data[channel], label=channel.label,
+                        **dict((key, params[key][i]) for key in params))
+                ax.legend()
+        # set up all other iterations
+        else:
+            for line, channel in zip(lines, self.channels):
+                line.set_xdata(self.data[channel].times.data)
+                line.set_ydata(self.data[channel].data)
+        for ax in self._fig.get_axes(self.AXES_CLASS.name):
+            ax.autoscale_view(scalex=False)
+        self.logger.debug('Figure data updated')
+        for ax in self._fig.get_axes(self.AXES_CLASS.name):
             if float(self.epoch) > (self.gpsstart + self.duration):
                 ax.set_xlim(float(self.epoch - self.duration),
                             float(self.epoch))
@@ -94,6 +111,6 @@ class TimeSeriesMonitor(DataMonitor):
                 ax.set_xlim(float(self.gpsstart),
                             float(self.gpsstart) + self.duration)
             ax.set_epoch(self.epoch)
-        self.refresh_params()
+        self.set_params('refresh')
         self._fig.refresh()
         self.logger.debug('Figure refreshed')
