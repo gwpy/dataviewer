@@ -40,7 +40,7 @@ BTN_HEIGHT = 0.05
 
 # fixed parameters
 PARAMS = {}
-PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel']
+PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel', 'xscale', 'yscale']
 PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
                   'color']
 PARAMS['refresh'] = ['xlim', 'ylim']
