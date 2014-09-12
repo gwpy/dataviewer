@@ -59,7 +59,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self._fig = self.FIGURE_CLASS()
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
-            #ax.set_xlabel('Frequency [Hz]')
         if self.sep:
             for channel in self.channels:
                 _new_axes()
@@ -109,4 +108,5 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.logger.debug('Figure refreshed')
         if self.save_count % self.save_every == 0:
             self._fig.save(self.figname)
+            self.logger.debug('Figure saved')
         self.save_count += 1
