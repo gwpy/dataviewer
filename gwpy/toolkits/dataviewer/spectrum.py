@@ -82,7 +82,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 self.fftlength, self.overlap, method=self.method,
                 window=self.window)
             if channel.filter:
-                self.spectra[channel] = self.spectr[channel].filter(
+                self.spectra[channel] = self.spectra[channel].filter(
                                         *channel.filter)
 
     def refresh(self):
