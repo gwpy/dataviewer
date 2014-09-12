@@ -83,16 +83,15 @@ class DataSource(object):
         self.connection = kwargs.pop('connection', None)
         super(DataSource, self).__init__(*args, **kwargs)
 
+    def new_frame_seq(self):
+        return self.iterate()
+
     @abc.abstractmethod
     def connect(self):
         pass
 
     @abc.abstractmethod
-    def init_data_source(self):
-        pass
-
-    @abc.abstractmethod
-    def read_data(self):
+    def read_data(self, buffer):
         pass
 
 
@@ -104,9 +103,12 @@ class NDSDataSource(DataSource):
     def __init__(self, *args, **kwargs):
         self.host = kwargs.pop('host', None)
         self.port = kwargs.pop('port', None)
+        self.interval = kwargs.get('interval', 1)
         super(NDSDataSource, self).__init__(*args, **kwargs)
 
     def connect(self):
+        """Connect to this `DataSource`
+        """
         if self.connection:
             return self.connection
         if self.host is None:
@@ -123,21 +125,36 @@ class NDSDataSource(DataSource):
         self.logger.debug('Connection established')
         return self.connection
 
-    def new_frame_seq(self):
+    def iterate(self):
+        """Generate a new iterator that will feed data to the `Monitor`
+        """
         self.logger.debug("Initialising data transfer (if this takes a while, "
                           "it's because the channel list is being "
                           "downloaded)...")
-        it_ = self.connection.iterate([c.ndsname for c in
-                                        self.channels])
+        it_ = self.connection.iterate(
+            self.interval, [c.ndsname for c in self.channels])
         self.logger.debug('Data iteration ready')
         return it_
 
+    def _step(self, *args, **kwargs):
+        try:
+            return super(NDSDataSource, self)._step(*args, **kwargs)
+        except RuntimeError as e:
+            self.logger.warning('NDS error: %s' % str(e))
+            self._draw_next_frame([], self._blit)
+            return True
+
     def read_data(self, buffer):
+        """Parse the new data from the source into a `TimeSeriesDict`
+        """
         new = TimeSeriesDict()
         for buffer_, c in zip(buffer, self.channels):
             new.append({c: TimeSeries.from_nds2_buffer(buffer_)})
             self.epoch = new[c].span[-1]
-        self.logger.debug('Data recorded with epoch: %s' % self.epoch)
+        if buffer == []:
+            self.logger.warning('No data recorded for epoch: %s' % self.epoch)
+        else:
+            self.logger.debug('Data recorded with epoch: %s' % self.epoch)
         return new
 
 
