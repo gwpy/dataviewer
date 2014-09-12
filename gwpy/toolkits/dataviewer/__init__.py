@@ -27,3 +27,4 @@ __version__ = version.version
 
 # import user-level monitors
 from .timeseries import *
+from .spectrum import *
