@@ -23,6 +23,8 @@ import abc
 
 from matplotlib.animation import TimedAnimation
 from matplotlib.axes import Axes
+from matplotlib.backends import interactive_bk
+from matplotlib.pyplot import get_backend
 from matplotlib.widgets import Button
 
 from gwpy.time import tconvert
@@ -106,11 +108,33 @@ class Monitor(TimedAnimation):
     # -------------------------------------------------------------------------
     # Animation commands
 
-    def run(self):
+    def run(self, interactive=True):
         """Run the monitor
         """
-        #self.start()
-        self._fig.show()
+        # check backend
+        if get_backend() not in interactive_bk:
+            interactive = False
+        # run interactive with show()
+        if interactive:
+            self.run_interactive()
+        # run non-interactive with save()
+        else:
+            self.run_noninteractive()
+
+    def run_interactive(self):
+        manager = getattr(self._fig.canvas, 'manager')
+        manager.show()
+
+    def run_noninteractive(self):
+        if not self.figname:
+            raise ValueError("Cannot run monitor in 'non-interactive' mode "
+                             "without a figname to save to. Please specify a "
+                             "figname when creating the monitor and try again.")
+        while True:
+            try:
+                self._step()
+            except StopIteration:
+                break
 
     # -------------------------------------------------------------------------
     # Handle display parameters
