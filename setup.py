@@ -311,7 +311,7 @@ setup(name=DISTNAME,
           'nds2',
       ],
       install_requires=[
-      ],
+      ] + extra_install_requires,
       dependency_links=[
           'https://www.lsc-group.phys.uwm.edu/daswg/download/'
               'software/source/glue-1.46.tar.gz#egg=glue-1.46',

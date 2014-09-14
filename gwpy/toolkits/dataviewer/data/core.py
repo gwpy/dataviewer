@@ -20,7 +20,12 @@
 """
 
 import abc
-from collections import (OrderedDict, defaultdict)
+from collections import defaultdict
+
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 import nds2
 
