@@ -51,6 +51,7 @@ class DataMonitor(Monitor):
     def __init__(self, *channels, **kwargs):
         self.logger = kwargs.pop('logger', Logger('monitor'))
         self.epoch = tconvert('now')
+        self.sep = kwargs.pop('separate', False)
         labels = kwargs.pop('labels', [None] * len(channels))
         filters = kwargs.pop('filters', [None] * len(channels))
 
