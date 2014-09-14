@@ -65,7 +65,10 @@ class Logger(logging.Logger):
                  bold=BOLD_SEQ, reset=RESET_SEQ, system='{system}'))
     def __init__(self, name, system='GWDV',
                  level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S'):
-        super(Logger, self).__init__(name, level=level)
+        try:
+            super(Logger, self).__init__(name, level=level)
+        except TypeError:
+            logging.Logger.__init__(self, name, level=level)
         colorformatter = ColoredFormatter(self.FORMAT.format(system=system),
                                           datefmt=datefmt)
         console = logging.StreamHandler()
