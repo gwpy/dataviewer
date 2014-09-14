@@ -25,6 +25,7 @@ from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 from gwpy.plotter import (TimeSeriesPlot, TimeSeriesAxes)
 
 from . import version
+from .registry import register_monitor
 from .data import DataMonitor
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
@@ -36,6 +37,7 @@ __all__ = ['TimeSeriesMonitor']
 class TimeSeriesMonitor(DataMonitor):
     """Monitor some time-series data
     """
+    type = 'timeseries'
     FIGURE_CLASS = TimeSeriesPlot
     AXES_CLASS = TimeSeriesAxes
 
@@ -114,3 +116,5 @@ class TimeSeriesMonitor(DataMonitor):
         self.set_params('refresh')
         self._fig.refresh()
         self.logger.debug('Figure refreshed')
+
+register_monitor(TimeSeriesMonitor)

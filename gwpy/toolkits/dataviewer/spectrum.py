@@ -21,11 +21,10 @@
 
 from itertools import cycle
 
-from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
-from gwpy.spectrum import Spectrum
 from gwpy.plotter import (SpectrumPlot, SpectrumAxes)
 
 from . import version
+from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
@@ -37,6 +36,7 @@ __all__ = ['SpectrumMonitor']
 class SpectrumMonitor(TimeSeriesMonitor):
     """Monitor some spectra
     """
+    type = 'spectrum'
     FIGURE_CLASS = SpectrumPlot
     AXES_CLASS = SpectrumAxes
 
@@ -110,3 +110,5 @@ class SpectrumMonitor(TimeSeriesMonitor):
             self._fig.save(self.figname)
             self.logger.debug('Figure saved')
         self.save_count += 1
+
+register_monitor(SpectrumMonitor)

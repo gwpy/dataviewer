@@ -51,6 +51,7 @@ AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel']
 
 class Monitor(TimedAnimation):
     __metaclass__ = abc.ABCMeta
+    type = None
     FIGURE_CLASS = None
     AXES_CLASS = None
 
