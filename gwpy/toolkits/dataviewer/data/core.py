@@ -103,8 +103,7 @@ class DataMonitor(Monitor):
         pass
 
     def _draw_frame(self, data):
-        new = self.read_data(data)
-        self.update_data(new)
+        self.update_data(data)
         if not self.paused:
             self.refresh()
 

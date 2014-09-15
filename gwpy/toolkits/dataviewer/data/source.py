@@ -93,10 +93,6 @@ class DataSource(object):
     def connect(self):
         pass
 
-    @abc.abstractmethod
-    def read_data(self, buffer):
-        pass
-
 
 class NDSDataSource(DataSource):
     """`DataSource` for NDS2 data
@@ -135,8 +131,8 @@ class NDSDataSource(DataSource):
         self.logger.debug("Initialising data transfer (if this takes a while, "
                           "it's because the channel list is being "
                           "downloaded)...")
-        it_ = self.connection.iterate(
-            self.interval, [c.ndsname for c in self.channels])
+        it_ = NDSIterator(self.connection, self.interval,
+                          [c.ndsname for c in self.channels])
         self.logger.debug('Data iteration ready')
         return it_
 
@@ -160,19 +156,51 @@ class NDSDataSource(DataSource):
             self.frame_seq = self.new_frame_seq()
             return self._step(*args, **kwargs)
 
-    def read_data(self, buffer):
-        """Parse the new data from the source into a `TimeSeriesDict`
-        """
-        new = TimeSeriesDict()
-        for buffer_, c in zip(buffer, self.channels):
-            new.append({c: TimeSeries.from_nds2_buffer(buffer_)})
-            self.epoch = new[c].span[-1]
-        if buffer == []:
-            self.logger.warning('No data recorded for epoch: %s' % self.epoch)
-        else:
-            self.logger.debug('Data recorded with epoch: %s' % self.epoch)
-        return new
-
 
 register_data_source(NDSDataSource)
 register_data_source(NDSDataSource, 'nds')
+
+
+class NDSIterator(object):
+    """Custom iterator to handle NDS1 update stride
+
+    The NDS1 protocol iterator returns 1-second buffers under all
+    user inputs, so we need to work around this and manually buffer the
+    data.
+
+    For NDS2 protocol connections, this wrapper is trivial.
+    """
+    def __init__(self, connection, interval, channels, stride=None):
+        """Construct a new iterator
+        """
+        if stride is None and connection.get_protocol() == 1:
+            stride = 1
+        elif stride is None:
+            stride = interval
+        self.interval = interval
+        self.stride = stride
+        self.channels = channels
+        self.iterator = connection.iterate(stride, channels)
+
+    def __iter__(self):
+        return self
+
+    def next(self):
+        """Get the next data iteration
+
+        For NDS1 connections this method simply loops over the underlying
+        iterator until we have collected enough 1-second chunks.
+
+        Returns
+        -------
+        data : :class:`~gwpy.timeseries.TimeSeriesDict`
+           a new `TimeSeriesDict` with the concantenated, buffered data
+        """
+        new = TimeSeriesDict()
+        span = 0
+        while span < self.interval:
+            buffers = next(self.iterator)
+            for buff, c in zip(buffers, self.channels):
+                new.append({c: TimeSeries.from_nds2_buffer(buff)})
+                span = abs(new[c].span)
+        return new
