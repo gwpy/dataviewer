@@ -26,6 +26,7 @@ import abc
 import nds2
 
 from gwpy.io.nds import DEFAULT_HOSTS as DEFAULT_NDS_HOST
+from gwpy.detector import Channel
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 
 from . import version
@@ -131,8 +132,7 @@ class NDSDataSource(DataSource):
         self.logger.debug("Initialising data transfer (if this takes a while, "
                           "it's because the channel list is being "
                           "downloaded)...")
-        it_ = NDSIterator(self.connection, self.interval,
-                          [c.ndsname for c in self.channels])
+        it_ = NDSIterator(self.connection, self.interval, self.channels)
         self.logger.debug('Data iteration ready')
         return it_
 
@@ -180,7 +180,8 @@ class NDSIterator(object):
         self.interval = interval
         self.stride = stride
         self.channels = channels
-        self.iterator = connection.iterate(stride, channels)
+        self.iterator = connection.iterate(
+            stride, [Channel(c).ndsname for c in channels])
 
     def __iter__(self):
         return self
@@ -201,6 +202,7 @@ class NDSIterator(object):
         while span < self.interval:
             buffers = next(self.iterator)
             for buff, c in zip(buffers, self.channels):
-                new.append({c: TimeSeries.from_nds2_buffer(buff)})
+                new.append({c: TimeSeries.from_nds2_buffer(buff)},
+                           gap='pad')
                 span = abs(new[c].span)
         return new
