@@ -210,7 +210,6 @@ class Monitor(TimedAnimation):
     def pause(self, event):
         """Pause the current animation
         """
-        print(event.button)
         if self.paused:
             self.paused = False
             self.buttons['pause'].label.set_text('Resume')
