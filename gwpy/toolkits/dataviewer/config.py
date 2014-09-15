@@ -22,13 +22,19 @@ Configuring monitors via INI files
 
 Any monitor can be configured by importing the relevant class, and passing
 a plethora of arguments to customise the monitor's output.
-However, if there are a few channels, each with their own labelling and filtering, this becomes awkward, and quickly.
+However, if there are a few channels, each with their own labelling and
+filtering, this becomes awkward, and quickly.
 
-GWpy DataViewer supports defining monitors via INI-format configuration files. Each monitor is defined by a ``[monitor]`` section giving the ``type``, and ``channels``, and any other monitor-specific setup parameters.
+GWpy DataViewer supports defining monitors via INI-format configuration files.
+Each monitor is defined by a ``[monitor]`` section giving the ``type`` and any
+other monitor-specific setup parameters.
 
-Channel-specific options can be given in a separate section defined with the name of that channel, e.g. ``[L1:LSC-DARM_ERR]``, accepting the ``label``, and ``filter`` options, for example.
+Channels and their specific options can be given in a separate section defined
+with the name of that channel, e.g. ``[L1:LSC-DARM_ERR]``, accepting the
+``label``, and ``filter`` options, for example.
 
-Finally, plot-specific options can be given in the ``[plot]`` section, accepting things like ``xlabel``, ``title``, ``ylim``, etc.
+Finally, plot-specific options can be given in the ``[plot]`` section,
+accepting things like ``xlabel``, ``title``, ``ylim``, etc.
 
 For example:
 
@@ -36,7 +42,6 @@ For example:
 
    [monitor]
    type = spectrum
-   channels = %(ifo)s:OAF-CAL_DARM_DQ
    fftlength = 10
    overlap = 5
    averages = 7
@@ -51,7 +56,9 @@ For example:
    title = r'Advanced LIGO displacement sensitivity'
    color = 'green'
 
-Here the additional interpolated subsitution for 'ifo' is used to allow the same monitor to be quickly configured for all interferometers in the GW detector network.
+Here the additional interpolated subsitution for 'ifo' is used to allow the
+same monitor to be quickly configured for all interferometers in the GW
+detector network.
 """
 
 import os
@@ -83,12 +90,14 @@ def from_ini(filepath, ifo=None):
     # get basic params
     basics = dict(cp.items('monitor', raw=True))
     type_ = basics.pop('type')
-    channels = [c.strip('\n ') for c in basics.pop('channels', '').split(',')]
     basics = dict((key, safe_eval(val)) for (key, val) in basics.iteritems())
     # get type
     monitor = get_monitor(type_)
     # get plotting parameters
     pparams = dict((key, safe_eval(val)) for (key, val) in cp.items('plot'))
+    # get channel names
+    sections = cp.sections()
+    channels = [c for c in sections if c not in ['monitor', 'plot']]
     # get channel parameters
     cparams = {}
     for i, channel in enumerate(channels):
