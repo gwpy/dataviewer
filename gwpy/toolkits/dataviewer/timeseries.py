@@ -54,7 +54,7 @@ class TimeSeriesMonitor(DataMonitor):
         super(TimeSeriesMonitor, self).__init__(*channels, **kwargs)
 
     def init_figure(self):
-        self._fig = self.FIGURE_CLASS()
+        self._fig = self.FIGURE_CLASS(**self.params['figure'])
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
             ax.set_xlim(float(self.epoch), float(self.epoch) + self.duration)
