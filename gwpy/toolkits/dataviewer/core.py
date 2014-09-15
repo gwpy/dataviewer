@@ -24,7 +24,7 @@ import abc
 from matplotlib.animation import TimedAnimation
 from matplotlib.axes import Axes
 from matplotlib.backends import interactive_bk
-from matplotlib.pyplot import get_backend
+from matplotlib.pyplot import (get_backend, show)
 from matplotlib.widgets import Button
 
 from gwpy.time import tconvert
@@ -42,7 +42,9 @@ BTN_HEIGHT = 0.05
 
 # fixed parameters
 PARAMS = {}
-PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel', 'xscale', 'yscale']
+PARAMS['figure'] = ['figsize']
+PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel', 'xscale', 'yscale',
+                  'suptitle']
 PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
                   'color']
 PARAMS['refresh'] = ['xlim', 'ylim']
@@ -112,7 +114,7 @@ class Monitor(TimedAnimation):
     # -------------------------------------------------------------------------
     # Animation commands
 
-    def run(self, interactive=True):
+    def run(self, interactive=True, block=True):
         """Run the monitor
         """
         # check backend
@@ -120,16 +122,17 @@ class Monitor(TimedAnimation):
             interactive = False
         # run interactive with show()
         if interactive:
-            self.run_interactive()
+            return self.run_interactive()
         # run non-interactive with save()
         else:
-            self.run_noninteractive()
+            return self.run_noninteractive()
 
-    def run_interactive(self):
-        manager = getattr(self._fig.canvas, 'manager')
-        manager.show()
+    def run_interactive(self, block=True):
+        self.logger.debug('Starting monitor')
+        return show(block=block)
 
     def run_noninteractive(self):
+        self.logger.debug('Starting monitor in non-interactive mode')
         if not self.figname:
             raise ValueError("Cannot run monitor in 'non-interactive' mode "
                              "without a figname to save to. Please specify a "
