@@ -37,6 +37,9 @@ __all__ = ['get_data_source']
 
 SOURCES = {}
 
+error_count = 0
+MAX_ERRORS = 5
+
 
 # -----------------------------------------------------------------------------
 # Data source
@@ -138,10 +141,20 @@ class NDSDataSource(DataSource):
         return it_
 
     def _step(self, *args, **kwargs):
+        global error_count
         try:
-            return super(NDSDataSource, self)._step(*args, **kwargs)
+            out = super(NDSDataSource, self)._step(*args, **kwargs)
+            error_count = 0
+            return out
         except RuntimeError as e:
+            error_count += 1
+            if error_count >= MAX_ERRORS:
+                e.args = (str(e) + ' Tried %d times with no success'
+                                   % error_count,)
+                self._fig.close()
+                raise
             self.logger.warning('NDS error: %s' % str(e))
+            self.logger.warning('Trying again (attempt %d)' % error_count)
             self.connection = None
             self.connect()
             self.frame_seq = self.new_frame_seq()
