@@ -309,6 +309,7 @@ setup(name=DISTNAME,
           'glue',
           'gwpy',
           'nds2',
+          'argparse',
       ],
       install_requires=[
       ] + extra_install_requires,

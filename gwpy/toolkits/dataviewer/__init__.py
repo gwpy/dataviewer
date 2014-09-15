@@ -26,6 +26,7 @@ __credits__ = 'The LIGO Laboratory, and the LIGO Scientific Collaboration'
 __version__ = version.version
 
 # import user-level monitors
+from .config import *
 from .registry import *
 from .timeseries import *
 from .spectrum import *

@@ -20,6 +20,7 @@
 """
 
 import abc
+from argparse import ArgumentParser
 from collections import defaultdict
 
 try:
@@ -57,8 +58,8 @@ class DataMonitor(Monitor):
         self.logger = kwargs.pop('logger', Logger('monitor'))
         self.epoch = tconvert('now')
         self.sep = kwargs.pop('separate', False)
-        labels = kwargs.pop('labels', [None] * len(channels))
-        filters = kwargs.pop('filters', [None] * len(channels))
+        labels = kwargs.pop('label', [None] * len(channels))
+        filters = kwargs.pop('filter', [None] * len(channels))
 
         # setup channels
         self._channels = OrderedDict()
@@ -110,3 +111,27 @@ class DataMonitor(Monitor):
     @abc.abstractmethod
     def update_data(self):
         pass
+
+    # ------------------------------------------
+    # parse command line
+
+    @staticmethod
+    def init_cli_parser():
+        """Add commands to the given ArgumentParser
+        """
+        parser = ArgumentParser(add_help=False)
+        parser.add_argument('-c', '--channel', action='append', type=Channel,
+                            help='name of channel to monitor, may be given '
+                                 'multiple times')
+        parser.add_argument('-l', '--label', action='append', type=str,
+                            help='label for channel, may be given multiple '
+                                 'times, but should be one per channel given '
+                                 'in the same order')
+        parser.add_argument('-f', '--filter', action='append', type=str,
+                            help='zpk filter for channel, may be given '
+                                 'multiple times, but should be one per '
+                                 'channel given in the same order')
+        parser.add_argument('-p', '--separate', action='store', type=str,
+                            default=False, help='print each channel on separate'
+                                                ' Axes, default: %(default)s')
+        return parser

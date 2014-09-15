@@ -116,4 +116,14 @@ class TimeSeriesMonitor(DataMonitor):
         self._fig.refresh()
         self.logger.debug('Figure refreshed')
 
+    @classmethod
+    def add_cli_parser(cls, parser, parents=[]):
+        """Add a sub-command to the given command-line parser
+        """
+        sub = parser.add_parser(cls.type, parents=parents,
+                                help='Configure a %s' % cls.__name__)
+        sub.add_argument('-t', '--interval', action='store', type=int,
+                         default=1,
+                         help='update interval (seconds), default: %(default)s')
+
 register_monitor(TimeSeriesMonitor)
