@@ -98,12 +98,12 @@ def from_ini(filepath, ifo=None):
     # get channel names
     sections = cp.sections()
     channels = [c for c in sections if c not in ['monitor', 'plot']]
+
     # get channel parameters
     cparams = {}
     for i, channel in enumerate(channels):
         # get channel section
-        if cp.has_section(channel):
-            _params = cp.items(channel)
+        _params = cp.items(channel)
         # interpolate ifo
         if r'%(ifo)s' in channel and not ifo:
             raise ValueError("Cannot interpolate IFO in channel name without "
