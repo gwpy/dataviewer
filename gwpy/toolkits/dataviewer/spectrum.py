@@ -24,6 +24,7 @@ from itertools import cycle
 from gwpy.plotter import (SpectrumPlot, SpectrumAxes)
 
 from . import version
+from .data.core import OrderedDict
 from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor
 
@@ -74,7 +75,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         super(SpectrumMonitor, self).update_data(new)
         epoch = new[self.channels[0]].span[-1]
         # recalculate ASDs
-        self.spectra = {}
+        self.spectra = OrderedDict()
         if abs(self.data[self.channels[0]].span) < self.fftlength:
             return
         for channel in self.data:
