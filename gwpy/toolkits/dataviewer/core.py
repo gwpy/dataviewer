@@ -65,6 +65,9 @@ class Monitor(TimedAnimation):
     def __init__(self, fig=None, interval=1, blit=True, repeat=False,
                  logger=Logger('monitor'), figname=None, save_every=1,
                  pause=False, **kwargs):
+        # record timing
+        self.gpsstart = tconvert('now')
+
         # pick up refresh
         kwargs = self.parse_params(kwargs)
         # set up figure
@@ -82,8 +85,6 @@ class Monitor(TimedAnimation):
 
         self.logger = logger
 
-        # record timing
-        self.gpsstart = tconvert('now')
 
         # set up events connection
         self.buttons = {}
