@@ -74,7 +74,7 @@ class Monitor(TimedAnimation):
 
         self.figname = figname
         self.save_every = save_every
-        self.save_count = 0
+        self.refresh_count = 0
         if save_every * interval < 10 and figname:
             self.logger.warning('Saving too often!')
 
