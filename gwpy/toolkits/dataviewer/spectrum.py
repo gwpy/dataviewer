@@ -19,7 +19,10 @@
 """DataMonitor for ASDs
 """
 
+import re
 from itertools import cycle
+
+from astropy.time import Time
 
 from gwpy.plotter import (SpectrumPlot, SpectrumAxes)
 
@@ -57,9 +60,10 @@ class SpectrumMonitor(TimeSeriesMonitor):
         super(SpectrumMonitor, self).__init__(*channels, **kwargs)
 
     def init_figure(self):
-        self._fig = self.FIGURE_CLASS()
+        self._fig = self.FIGURE_CLASS(**self.params['figure'])
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
+            ax.grid(True, 'minor', 'both')
         if self.sep:
             for channel in self.channels:
                 _new_axes()
@@ -88,7 +92,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.logger.info('Data recorded with epoch: %s' % epoch)
 
     def refresh(self):
-        # set up first iteration
+        # process first iteration
         lines = [l for ax in self._fig.axes for l in ax.lines]
         if len(lines) == 0:
             axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
@@ -98,7 +102,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 ax.plot(self.spectra[channel], label=channel.label,
                         **dict((key, params[key][i]) for key in params))
                 ax.legend()
-        # set up all other iterations
+        # process all other iterations
         else:
             for line, channel in zip(lines, self.channels):
                 line.set_xdata(self.spectra[channel].frequencies.data)
@@ -106,6 +110,11 @@ class SpectrumMonitor(TimeSeriesMonitor):
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             ax.autoscale_view(scalex=False)
         self.logger.info('Figure data updated')
+        # add suptitle
+        if not 'suptitle' in self.params['init']:
+            utc = re.sub('\.0+', '',
+                         Time(self.epoch, format='gps', scale='utc').iso)
+            self._fig.suptitle('Last updated: %s (%s)' % (utc, self.epoch))
         self.set_params('refresh')
         self._fig.refresh()
         self.logger.info('Figure refreshed')
