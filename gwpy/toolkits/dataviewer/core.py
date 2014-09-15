@@ -64,7 +64,7 @@ class Monitor(TimedAnimation):
 
     def __init__(self, fig=None, interval=1, blit=True, repeat=False,
                  logger=Logger('monitor'), figname=None, save_every=1,
-                 **kwargs):
+                 pause=False, **kwargs):
         # pick up refresh
         kwargs = self.parse_params(kwargs)
         # set up figure
@@ -88,7 +88,8 @@ class Monitor(TimedAnimation):
         # set up events connection
         self.buttons = {}
         self.paused = False
-        self.buttons['pause'] = self._button('Pause', self.pause, 0.88)
+        if pause:
+            self.buttons['pause'] = self._button('Pause', self.pause, 0.88)
 
         # announce
         self.logger.debug('Monitor ready to start\n'
