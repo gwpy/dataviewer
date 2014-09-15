@@ -88,6 +88,10 @@ class Monitor(TimedAnimation):
         self.paused = False
         self.buttons['pause'] = self._button('Pause', self.pause, 0.88)
 
+        # announce
+        self.logger.debug('Monitor ready to start\n'
+                          '    Use the run() method of the monitor to execute')
+
     @abc.abstractmethod
     def init_figure(self, **kwargs):
         """Initialise the :class:`~matplotlib.figure.Figure`.

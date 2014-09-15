@@ -72,6 +72,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
     def update_data(self, new):
         # record new data
         super(SpectrumMonitor, self).update_data(new)
+        epoch = new[self.channels[0]].span[-1]
         # recalculate ASDs
         self.spectra = {}
         if abs(self.data[self.channels[0]].span) < self.fftlength:
@@ -83,6 +84,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             if channel.filter:
                 self.spectra[channel] = self.spectra[channel].filter(
                                         *channel.filter)
+        self.logger.info('Data recorded with epoch: %s' % epoch)
 
     def refresh(self):
         # set up first iteration
@@ -102,13 +104,13 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 line.set_ydata(self.spectra[channel].data)
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             ax.autoscale_view(scalex=False)
-        self.logger.debug('Figure data updated')
+        self.logger.info('Figure data updated')
         self.set_params('refresh')
         self._fig.refresh()
-        self.logger.debug('Figure refreshed')
+        self.logger.info('Figure refreshed')
         if self.figname and self.refresh_count % self.save_every == 0:
             self._fig.save(self.figname)
-            self.logger.debug('Figure saved')
+            self.logger.info('Figure saved')
         self.refresh_count += 1
 
 register_monitor(SpectrumMonitor)

@@ -84,6 +84,7 @@ class TimeSeriesMonitor(DataMonitor):
             self.data.append(new, resize=True, gap='pad')
         else:
             self.data.append(new, resize=False, gap='pad')
+        self.epoch = self.data[self.channels[0]].span[-1]
 
     def refresh(self):
         # set up first iteration

@@ -106,6 +106,7 @@ class DataMonitor(Monitor):
         self.update_data(data)
         if not self.paused:
             self.refresh()
+        self.logger.debug('Iteration complete for epoch %s' % self.epoch)
 
     @abc.abstractmethod
     def update_data(self):
