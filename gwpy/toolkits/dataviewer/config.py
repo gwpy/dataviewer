@@ -78,7 +78,7 @@ __version__ = version.version
 def safe_eval(val):
     try:
         return eval(val)
-    except NameError:
+    except (NameError, SyntaxError):
         return str(val)
 
 
