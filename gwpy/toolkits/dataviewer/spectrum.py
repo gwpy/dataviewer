@@ -244,9 +244,12 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.logger.info('Figure data updated')
         # add suptitle
         if not 'suptitle' in self.params['init']:
+            prefix = ('FFT length: %ss, Overlap: %ss, Averages: %d -- '
+                      % (self.fftlength, self.overlap, self.averages))
             utc = re.sub('\.0+', '',
                          Time(self.epoch, format='gps', scale='utc').iso)
-            self._fig.suptitle('Last updated: %s (%s)' % (utc, self.epoch))
+            suffix = 'Last updated: %s UTC (%s)' % (utc, self.epoch)
+            self._fig.suptitle(prefix + suffix)
         self.set_params('refresh')
         self._fig.refresh()
         self.logger.info('Figure refreshed')
