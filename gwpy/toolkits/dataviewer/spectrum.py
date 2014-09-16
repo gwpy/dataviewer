@@ -111,7 +111,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                                     message = ': this is a global parameter.'
                                 else:
                                     message = '.'
-                                raise ValueError('Unsupported parameter'
+                                raise ValueError('Unsupported parameter '
                                                  '%r for reference '
                                                  'plotting%s'
                                                  % (param, message))

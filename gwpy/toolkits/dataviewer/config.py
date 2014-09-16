@@ -68,6 +68,8 @@ from ConfigParser import ConfigParser
 
 from . import version
 from .registry import get_monitor
+from gwpy.spectrum.core import Spectrum
+from .data.core import OrderedDict
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __version__ = version.version
@@ -96,9 +98,13 @@ def from_ini(filepath, ifo=None):
     monitor = get_monitor(type_)
     # get plotting parameters
     pparams = dict((key, safe_eval(val)) for (key, val) in cp.items('plot'))
-    # get channel names
+
+    # get channel and reference curve names
     sections = cp.sections()
-    channels = [c for c in sections if c not in ['monitor', 'plot']]
+    channels = [c for c in sections if c not in ['monitor', 'plot']
+                if c[:4] != 'ref:']
+    references = [c for c in sections if c not in ['monitor', 'plot']
+                  if c[:4] == 'ref:']
 
     # get channel parameters
     cparams = {}
@@ -118,6 +124,33 @@ def from_ini(filepath, ifo=None):
             except KeyError:
                 cparams[param] = [None] * i
                 cparams[param].append(val)
-    params = dict(basics.items() + pparams.items() + cparams.items())
-    return monitor(*channels, **params)
 
+    # get reference parameters
+    rparams = OrderedDict()
+    for i, reference in enumerate(references):
+        # get rerference section
+        _params = cp.items(reference)
+        refpath = reference[4:]
+        refform = 'dat'
+        rparamsi = OrderedDict()
+        refname = None
+        for param, val in _params:
+            val = safe_eval(val)
+            if param == 'path':
+                refpath = val
+            elif param == 'format':
+                refform = val
+            elif param in ['name', 'label']:
+                refname = val
+            else:
+                rparamsi[param] = val
+        # load curve
+        #try:
+        refspec = Spectrum.read(refpath, format=refform)
+        refspec.name = refname or os.path.basename(reference[4:])
+        rparams[refspec] = rparamsi
+        #except:
+        #    raise IOError('Reference curve not found in %r' % refpath)
+
+    params = dict(basics.items() + pparams.items() + cparams.items())
+    return monitor(*channels, reference=rparams, **params)
