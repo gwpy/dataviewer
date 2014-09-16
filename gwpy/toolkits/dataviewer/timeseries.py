@@ -120,6 +120,7 @@ class TimeSeriesMonitor(DataMonitor):
         self.set_params('refresh')
         self._fig.refresh()
         self.logger.debug('Figure refreshed')
+        self.save()
 
     @classmethod
     def add_cli_parser(cls, parser, parents=[]):

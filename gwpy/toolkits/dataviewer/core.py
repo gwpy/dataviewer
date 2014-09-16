@@ -145,6 +145,12 @@ class Monitor(TimedAnimation):
             except StopIteration:
                 break
 
+    def save(self):
+        if self.figname and self.refresh_count % self.save_every == 0:
+            self._fig.save(self.figname)
+            self.logger.info('Figure saved')
+        self.refresh_count += 1
+
     # -------------------------------------------------------------------------
     # Handle display parameters
 
