@@ -141,7 +141,10 @@ class NDSDataSource(DataSource):
     def backfill(self, start=None):
         """Retrieve data to backfill the plot
         """
-        pad = self.type == 'timeseries' and nan or 0
+        if self.type == 'timeseries':
+            pad = nan
+        else:
+            pad = 0
         c2 = nds2.connection(self.connection.get_host(),
                              self.connection.get_port())
         # first cut
