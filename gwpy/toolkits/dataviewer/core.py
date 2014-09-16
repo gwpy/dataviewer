@@ -133,13 +133,6 @@ class Monitor(TimedAnimation):
         # check backend
         if get_backend() not in interactive_bk:
             interactive = False
-        # wait for the minute boundary clock
-        if self._clock:
-            self.logger.debug('Waiting to align with UTC clock...')
-            seconds = 60 % self.interval == 0 and self.interval or 60
-            t = datetime.datetime.now()
-            while t.second % seconds:
-                t = datetime.datetime.now()
         # run interactive with show()
         if interactive:
             return self.run_interactive()
@@ -162,6 +155,17 @@ class Monitor(TimedAnimation):
                 self._step()
             except StopIteration:
                 break
+
+    def sync_clock(self):
+        """Pause the `Monitor` to get a user-friendly epoch
+        """
+        self.logger.debug('Waiting to align with UTC clock...')
+        seconds = 60 % self.interval == 0 and self.interval or 60
+        t = datetime.datetime.now()
+        while t.second % seconds:
+            t = datetime.datetime.now()
+        self.logger.debug('Aligned')
+        self.epoch = int(tconvert())
 
     def save(self):
         if self.figname and self.refresh_count % self.save_every == 0:

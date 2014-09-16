@@ -184,6 +184,9 @@ class NDSDataSource(DataSource):
         it_ = NDSIterator(self.connection, self.interval, self.channels,
                           pad=self.type == 'timeseries' and nan or 0)
         self.logger.debug('Data iteration ready')
+        if self._clock:
+            self.sync_clock()
+            self._clock = False
         return it_
 
     def _step(self, *args, **kwargs):
