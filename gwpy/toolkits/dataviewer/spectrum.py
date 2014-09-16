@@ -187,7 +187,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             raise ValueError('Unable to parse references.')
 
     def init_figure(self):
-        self._fig = self.FIGURE_CLASS()
+        self._fig = self.FIGURE_CLASS(**self.params['figure'])
 
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
