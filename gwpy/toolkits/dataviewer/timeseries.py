@@ -51,6 +51,12 @@ class TimeSeriesMonitor(DataMonitor):
                 raise ValueError("Monitor duration must be given after "
                                  "channels, or as a keyword 'duration=xxx' "
                                  "argument")
+        # parse references
+        reference = kwargs.pop('reference', [])
+        if reference:
+            raise NotImplementedError("References for TimeSeriesMonitors have "
+                                      "not been implemented, here's your "
+                                      "chance...")
         super(TimeSeriesMonitor, self).__init__(*channels, **kwargs)
 
     def init_figure(self):
