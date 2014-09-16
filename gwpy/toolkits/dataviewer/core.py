@@ -171,7 +171,13 @@ class Monitor(TimedAnimation):
 
     def save(self):
         if self.figname and self.refresh_count % self.save_every == 0:
+            # resize if needed
+            size = list(self._fig.get_size_inches())
+            if 'figsize' in self.params['figure']:
+                self._fig.set_size_inches(self.params['figure']['figsize'])
             self._fig.save(self.figname)
+            if list(self._fig.get_size_inches()) != size:
+                self._fig.set_size_inches(size)
             self.logger.info('Figure saved')
         self.refresh_count += 1
 
