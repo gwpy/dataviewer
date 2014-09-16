@@ -20,6 +20,7 @@
 """
 
 import abc
+import datetime
 
 from matplotlib.animation import TimedAnimation
 from matplotlib.axes import Axes
@@ -64,9 +65,10 @@ class Monitor(TimedAnimation):
 
     def __init__(self, fig=None, interval=1, blit=True, repeat=False,
                  logger=Logger('monitor'), figname=None, save_every=1,
-                 pause=False, **kwargs):
+                 pause=False, clock=False, **kwargs):
         # record timing
         self.gpsstart = tconvert('now')
+        self._clock = clock
 
         # pick up refresh
         kwargs = self.parse_params(kwargs)
@@ -122,6 +124,13 @@ class Monitor(TimedAnimation):
         # check backend
         if get_backend() not in interactive_bk:
             interactive = False
+        # wait for the minute boundary clock
+        if self._clock:
+            self.logger.debug('Waiting to align with UTC clock...')
+            seconds = 60 % self.interval == 0 and self.interval or 60
+            t = datetime.datetime.now()
+            while t.second % seconds:
+                t = datetime.datetime.now()
         # run interactive with show()
         if interactive:
             return self.run_interactive()
