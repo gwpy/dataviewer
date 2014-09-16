@@ -73,6 +73,7 @@ class TimeSeriesMonitor(DataMonitor):
         else:
             _new_axes()
         self.set_params('init')
+        self.set_params('refresh')
         for ax in self._fig.axes:
             if ax.get_yscale() == 'log':
                 ax.grid(True, 'minor', 'y')
