@@ -115,6 +115,15 @@ class Monitor(TimedAnimation):
         """
         pass
 
+    def _post_draw(self, framedata, blit):
+        # don't call default post draw if just starting,
+        # causes monitor to auto start for some backends
+        if framedata is None and not self._drawn_artists:
+            return
+        else:
+            return super(Monitor, self)._post_draw(framedata, blit)
+    _post_draw.__doc__ = TimedAnimation._post_draw.__doc__
+
     # -------------------------------------------------------------------------
     # Animation commands
 
