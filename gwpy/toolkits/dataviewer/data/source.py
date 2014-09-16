@@ -141,6 +141,7 @@ class NDSDataSource(DataSource):
     def backfill(self, start=None):
         """Retrieve data to backfill the plot
         """
+        pad = self.type == 'timeseries' and nan or 0
         c2 = nds2.connection(self.connection.get_host(),
                              self.connection.get_port())
         # first cut
@@ -153,7 +154,7 @@ class NDSDataSource(DataSource):
                                      [c.ndsname for c in self.channels])
         for buff, c in zip(data, self.channels):
             self.data.append({c: TimeSeries.from_nds2_buffer(buff)},
-                             gap='pad', pad=nan)
+                             gap='pad', pad=pad)
         self.epoch = self.data[self.channels[0]].span[-1]
         # second cut
         iterator = c2.iterate(
@@ -166,7 +167,7 @@ class NDSDataSource(DataSource):
             else:
                 for buff, c in zip(data, self.channels):
                     self.data.append({c: TimeSeries.from_nds2_buffer(buff)},
-                                     gap='pad', pad=nan)
+                                     gap='pad', pad=pad)
         self.epoch = self.data[self.channels[0]].span[-1]
         self.logger.info('Old data retrieved')
         self.connection = nds2.connection(self.connection.get_host(),
@@ -180,7 +181,8 @@ class NDSDataSource(DataSource):
         self.logger.debug("Initialising data transfer (if this takes a while, "
                           "it's because the channel list is being "
                           "downloaded)...")
-        it_ = NDSIterator(self.connection, self.interval, self.channels)
+        it_ = NDSIterator(self.connection, self.interval, self.channels,
+                          pad=self.type == 'timeseries' and nan or 0)
         self.logger.debug('Data iteration ready')
         return it_
 
@@ -219,7 +221,8 @@ class NDSIterator(object):
 
     For NDS2 protocol connections, this wrapper is trivial.
     """
-    def __init__(self, connection, interval, channels, stride=None):
+    def __init__(self, connection, interval, channels, stride=None,
+                 logger=Logger('nds2'), pad=0):
         """Construct a new iterator
         """
         if stride is None and connection.get_protocol() == 1:
@@ -231,6 +234,8 @@ class NDSIterator(object):
         self.channels = channels
         self.iterator = connection.iterate(
             stride, [Channel(c).ndsname for c in channels])
+        self.logger = logger
+        self.pad = pad
 
     def __iter__(self):
         return self
@@ -248,10 +253,13 @@ class NDSIterator(object):
         """
         new = TimeSeriesDict()
         span = 0
+        epoch = 0
         while span < self.interval:
             buffers = next(self.iterator)
             for buff, c in zip(buffers, self.channels):
                 new.append({c: TimeSeries.from_nds2_buffer(buff)},
-                           gap='pad')
+                           gap='pad', pad=self.pad)
                 span = abs(new[c].span)
+                epoch = new[c].span[-1]
+        self.logger.info('Data received with epoch %s' % epoch)
         return new
