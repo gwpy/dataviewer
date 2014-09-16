@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import abc
+import os
 
 from numpy import nan
 
@@ -118,11 +119,17 @@ class NDSDataSource(DataSource):
         if self.connection:
             return self.connection
         if self.host is None:
-            ifos = list(set([c.ifo for c in self.channels]))
-            if len(ifos) == 1:
-                self.host, self.port = DEFAULT_NDS_HOST[ifos[0]]
+            try:
+                server = os.environ['NDSSERVER'].split(',')[0]
+            except KeyError:
+                ifos = list(set([c.ifo for c in self.channels]))
+                if len(ifos) == 1:
+                    self.host, self.port = DEFAULT_NDS_HOST[ifos[0]]
+                else:
+                    self.host, self.port = DEFAULT_NDS_HOST[None]
             else:
-                self.host, self.port = DEFAULT_NDS_HOST[None]
+                self.host, self.port = server.split(':')
+                self.port = int(self.port)
         if self.port:
             self.logger.debug('Connecting to %s:%d...' % (self.host, self.port))
         else:
