@@ -23,10 +23,13 @@ from __future__ import print_function
 
 import abc
 
+from numpy import nan
+
 import nds2
 
 from gwpy.io.nds import DEFAULT_HOSTS as DEFAULT_NDS_HOST
 from gwpy.detector import Channel
+from gwpy.time import tconvert
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 
 from . import version
@@ -35,6 +38,8 @@ from ..log import Logger
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __version__ = version.version
 __all__ = ['get_data_source']
+
+END = 2000000000
 
 SOURCES = {}
 
@@ -125,6 +130,42 @@ class NDSDataSource(DataSource):
         self.connection = nds2.connection(self.host, self.port)
         self.logger.debug('Connection established')
         return self.connection
+
+    def backfill(self, start=None):
+        """Retrieve data to backfill the plot
+        """
+        c2 = nds2.connection(self.connection.get_host(),
+                             self.connection.get_port())
+        # first cut
+        if not start:
+            start = int(self.epoch - self.duration)
+        self.gpsstart = start
+        end = int(self.epoch) - 100
+        self.logger.debug('Retrieving old data for [%s, %s)...' % (start, end))
+        data = c2.fetch(start, end,
+                                     [c.ndsname for c in self.channels])
+        for buff, c in zip(data, self.channels):
+            self.data.append({c: TimeSeries.from_nds2_buffer(buff)},
+                             gap='pad', pad=nan)
+        self.epoch = self.data[self.channels[0]].span[-1]
+        # second cut
+        iterator = c2.iterate(
+            int(self.epoch), END, 1, [c.ndsname for c in self.channels])
+        while True:
+            try:
+                data = next(iterator)
+            except (StopIteration, RuntimeError):
+                break
+            else:
+                for buff, c in zip(data, self.channels):
+                    self.data.append({c: TimeSeries.from_nds2_buffer(buff)},
+                                     gap='pad', pad=nan)
+        self.epoch = self.data[self.channels[0]].span[-1]
+        self.logger.info('Old data retrieved')
+        self.connection = nds2.connection(self.connection.get_host(),
+                                          self.connection.get_port())
+        self.frame_seq = self.new_frame_seq()
+        return self.data
 
     def iterate(self):
         """Generate a new iterator that will feed data to the `Monitor`
