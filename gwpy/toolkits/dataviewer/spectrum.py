@@ -63,7 +63,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                               self.overlap)
         kwargs.setdefault('xscale', 'log')
         kwargs.setdefault('yscale', 'log')
-        kwargs['interval'] = self.fftlength-self.overlap
+        kwargs.setdefault('interval', self.fftlength-self.overlap)
         super(SpectrumMonitor, self).__init__(*channels, **kwargs)
 
     def add_reference(self, refs):
