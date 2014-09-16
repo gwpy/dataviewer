@@ -41,14 +41,16 @@ parser.add_argument('-n', '--non-interactive', action='store_true',
                     default=False,
                     help='Process monitor without displaying to screen, '
                          'default %(default)s')
+parser.add_argument('-b', '--back-fill', action='store_true', default=False,
+                    help='Fetch old data to back-fill the plot, '
+                         'default: %(default)s')
 
 args = parser.parse_args()
 
 mon = from_ini(args.configuration)
 try:
-    if args.non_interactive:
-        mon.run_noninteractive()
-    else:
-        mon.run_interactive()
+    if mon.type == 'timeseries' and args.back_fill:
+        mon.backfill()
+    mon.run(interactive=not args.non_interactive)
 except KeyboardInterrupt:
     mon.logger.debug('Ctrl-c detected, monitor will exit.')
