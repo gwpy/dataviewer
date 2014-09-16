@@ -128,29 +128,46 @@ def from_ini(filepath, ifo=None):
     # get reference parameters
     rparams = OrderedDict()
     for i, reference in enumerate(references):
-        # get rerference section
-        _params = cp.items(reference)
-        refpath = reference[4:]
-        refform = 'dat'
-        rparamsi = OrderedDict()
-        refname = None
-        for param, val in _params:
-            val = safe_eval(val)
-            if param == 'path':
-                refpath = val
-            elif param == 'format':
-                refform = val
-            elif param in ['name', 'label']:
-                refname = val
-            else:
-                rparamsi[param] = val
-        # load curve
-        #try:
-        refspec = Spectrum.read(refpath, format=refform)
-        refspec.name = refname or os.path.basename(reference[4:])
-        rparams[refspec] = rparamsi
-        #except:
-        #    raise IOError('Reference curve not found in %r' % refpath)
+        if os.path.basename(reference[4:]) == '':
+            # Section is a directory:
+            # get parameters (will be applied to all refrences)
+            _params = cp.items(reference)
+            rparamsi = OrderedDict()
+            for param, val in _params:
+                val = safe_eval(val)
+                if param == 'format':
+                    refform = val
+                else:
+                    rparamsi[param] = val
+            # import all references in folder (assumes 'dat' format)
+            refdir = reference[4:]
+            for f in os.listdir(refdir):
+                if os.path.splitext(f)[1] in ['.txt', '.dat', '.gz']:
+                    refspec = Spectrum.read(refdir + f, format='dat')
+                    refspec.name = f.split('.')[0].replace('_', r' ')
+                    rparams[refspec] = rparamsi
+        else:
+            # get rerference section
+            _params = cp.items(reference)
+            refpath = reference[4:]
+            refform = 'dat'
+            rparamsi = OrderedDict()
+            refname = None
+            for param, val in _params:
+                val = safe_eval(val)
+                if param == 'path':
+                    refpath = val
+                elif param == 'format':
+                    refform = val
+                elif param in ['name', 'label']:
+                    refname = val
+                else:
+                    rparamsi[param] = val
+            # load curve
+            refspec = Spectrum.read(refpath, format=refform)
+            refspec.name = refname or os.path.basename(reference[4:]).split(
+                '.')[0].replace('_', r' ')
+            rparams[refspec] = rparamsi
 
     params = dict(basics.items() + pparams.items() + cparams.items())
     return monitor(*channels, reference=rparams, **params)
