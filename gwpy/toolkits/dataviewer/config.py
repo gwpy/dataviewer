@@ -49,16 +49,17 @@ For example:
    [%(ifo)s:OAF-CAL_DARM_DQ]
    label = 'aDARM'
    filter = [100*2* pi] * 5, [2*pi] * 5, 1e-10
+   color = 'green'
 
    [plot]
    xlabel = r'Frequency [Hz]'
    ylabel = r'Displacement sensitivity [m$/\sqrt{\mathrm{Hz}}$]'
    title = r'Advanced LIGO displacement sensitivity'
-   color = 'green'
+
 
 Here the additional interpolated subsitution for 'ifo' is used to allow the
 same monitor to be quickly configured for all interferometers in the GW
-detector network.
+detector network. `color` can also be specified as a list under [plot].
 """
 
 import os

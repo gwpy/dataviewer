@@ -148,6 +148,7 @@ class NDSDataSource(DataSource):
                 e.args = (str(e) + ' Tried %d times with no success'
                                    % error_count,)
                 self._fig.close()
+                error_count = 0
                 raise
             self.logger.warning('NDS error: %s' % str(e))
             self.logger.warning('Trying again (attempt %d)' % error_count)

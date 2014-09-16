@@ -25,9 +25,11 @@ from itertools import cycle
 from astropy.time import Time
 
 from gwpy.plotter import (SpectrumPlot, SpectrumAxes)
+from gwpy.spectrum.core import Spectrum
 
 from . import version
 from .data.core import OrderedDict
+from .core import PARAMS
 from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor
 
@@ -51,6 +53,11 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.averages = kwargs.pop('averages', 10)
         self.window = kwargs.pop('window', 'hamming')
         self.method = kwargs.pop('method', 'welch')
+
+        # add references
+        self._references = OrderedDict()
+        self.add_reference(kwargs.pop('reference', None))
+
         # init monitor
         kwargs['duration'] = ((self.fftlength - self.overlap) * self.averages +
                               self.overlap)
@@ -59,11 +66,134 @@ class SpectrumMonitor(TimeSeriesMonitor):
         kwargs['interval'] = self.fftlength-self.overlap
         super(SpectrumMonitor, self).__init__(*channels, **kwargs)
 
+    def add_reference(self, refs):
+        """
+        Adds static reference spectra to the plot.
+
+        Arguments
+        ---------
+        refs: `Spectrum`, `dict`, `tuple`, `list`
+            Reference spectra. Can be:
+            - `Spectrum`: one single reference spectrum, label taken from name.
+            - `dict`: keys must be `Spectrum` objects, values must be
+            dictionaries containing plot arguments, e.g.
+               refs = {refspectrum: {'color': 'r'}, ...}
+            - 'tuple': first element must be `Spectrum` object, second must be
+             dictionary containing plot arguments, e.g.
+                refs = (refspectrum, {'color': 'r'}, ...)
+            - `list`: each element can be a `Spectrum` or a tuple following the
+            format outlined above.
+        """
+        if refs is None:
+            # no references provided
+            pass
+
+        elif isinstance(refs, Spectrum):
+            # single reference spectrum provided
+            refs.name = refs.name or 'Reference'
+            self._references[refs] = {}
+
+        elif isinstance(refs, dict) and \
+                all([isinstance(r, Spectrum) for r in refs.keys()]):
+                # single reference and config provided
+                for r in refs.keys():
+                    r.name = r.name or 'Reference'
+                    plotparam = {}
+                    if isinstance(refs[r], dict):
+                        for param, value in refs[r].iteritems():
+                            if param in ['label', 'name']:
+                                r.name = value
+                            elif param in PARAMS['draw']:
+                                plotparam[param] = value
+                            else:
+                                if param in PARAMS['init'] + \
+                                        PARAMS['refresh']:
+                                    message = ': this is a global parameter.'
+                                else:
+                                    message = '.'
+                                raise ValueError('Unsupported parameter'
+                                                 '%r for reference '
+                                                 'plotting%s'
+                                                 % (param, message))
+                    self._references[r] = plotparam
+
+        elif isinstance(refs, tuple) and isinstance(refs[0], Spectrum):
+            # tuple of reference and parameters provided
+            refs[0].name = refs[0].name or 'Reference'
+            if len(refs) == 2:
+                # settings provided
+                plotparam = {}
+                if isinstance(refs[1], dict):
+                    for param, value in refs[1].iteritems():
+                        # parse plot parameters
+                        if param in ['label', 'name']:
+                            refs[0].name = value
+                        elif param in PARAMS['draw']:
+                            plotparam[param] = value
+                        else:
+                            if param in PARAMS['init'] + PARAMS['refresh']:
+                                message = ': this is a global parameter.'
+                            else:
+                                message = '.'
+                            raise ValueError('Unsupported parameter'
+                                             ' %r for reference '
+                                             'plotting%s' % (param, message))
+                self._references[refs[0]] = plotparam
+            elif len(refs) == 1:
+                # no settings provided
+                self._references[refs[0]] = {}
+            else:
+                raise ValueError('Unsupported reference formatting: tuple'
+                                 'has too many elements.')
+
+        elif isinstance(refs, list):
+            # list of references provided
+            for r in refs:
+                if isinstance(r, Spectrum):
+                    # single spectrum
+                    r.name = r.name or 'Reference'
+                    self._references[r] = {}
+                elif isinstance(r, tuple) and isinstance(r[0], Spectrum):
+                    # tuple of reference and parameters
+                    r[0].name = r[0].name or 'Reference'
+                    if len(refs) == 2:
+                        # settings provided
+                        plotparam = {}
+                        if isinstance(r[1], dict):
+                            for param, value in r[1].iteritems():
+                                if param in ['label', 'name']:
+                                    r[0].name = value
+                                elif param in PARAMS['draw']:
+                                    plotparam[param] = value
+                                else:
+                                    if param in PARAMS['init'] + \
+                                            PARAMS['refresh']:
+                                        message=': this is a global parameter.'
+                                    else:
+                                        message = '.'
+                                    raise ValueError('Unsupported parameter'
+                                                     '%r for reference '
+                                                     'plotting%s'
+                                                     % (param, message))
+                        self._references[r[0]] = plotparam
+
+                    elif len(refs) == 1:
+                        # no settings provided
+                        self._references[r[0]] = {}
+                    else:
+                        raise ValueError('Unsupported reference formatting:'
+                                         'tuple has too many elements.')
+        else:
+            raise ValueError('Unable to parse references.')
+
     def init_figure(self):
-        self._fig = self.FIGURE_CLASS(**self.params['figure'])
+        self._fig = self.FIGURE_CLASS()
+
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
-            ax.grid(True, 'minor', 'both')
+            for spec, plotparams in self._references.iteritems():
+                    ax.plot(spec, label=spec.name, **plotparams)
+
         if self.sep:
             for channel in self.channels:
                 _new_axes()
@@ -92,8 +222,9 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.logger.info('Data recorded with epoch: %s' % epoch)
 
     def refresh(self):
-        # process first iteration
-        lines = [l for ax in self._fig.axes for l in ax.lines]
+        # set up first iteration
+        nref = len(self._references)
+        lines = [l for ax in self._fig.axes for l in ax.lines][nref:]
         if len(lines) == 0:
             axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
             params = self.params['draw']
@@ -102,13 +233,14 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 ax.plot(self.spectra[channel], label=channel.label,
                         **dict((key, params[key][i]) for key in params))
                 ax.legend()
-        # process all other iterations
+        # set up all other iterations
         else:
             for line, channel in zip(lines, self.channels):
                 line.set_xdata(self.spectra[channel].frequencies.data)
                 line.set_ydata(self.spectra[channel].data)
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             ax.autoscale_view(scalex=False)
+
         self.logger.info('Figure data updated')
         # add suptitle
         if not 'suptitle' in self.params['init']:
@@ -118,6 +250,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.set_params('refresh')
         self._fig.refresh()
         self.logger.info('Figure refreshed')
+
         if self.figname and self.refresh_count % self.save_every == 0:
             self._fig.save(self.figname)
             self.logger.info('Figure saved')

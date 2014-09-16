@@ -58,6 +58,7 @@ class DataMonitor(Monitor):
         self.logger = kwargs.pop('logger', Logger('monitor'))
         self.epoch = tconvert('now')
         self.sep = kwargs.pop('separate', False)
+
         labels = kwargs.pop('label', [None] * len(channels))
         filters = kwargs.pop('filter', [None] * len(channels))
 
@@ -84,7 +85,7 @@ class DataMonitor(Monitor):
     def frametypes(self):
         return set(self._channels.values())
 
-    def add_channel(self, channel, frametype=None, label=None, filter=None): #add filtering options here
+    def add_channel(self, channel, frametype=None, label=None, filter=None):
         if len(self.channels) == self.MAX_CHANNELS:
             raise ValueError("%s cannot hold more than %d channels."
                              % (type(self), self.MAX_CHANNELS))

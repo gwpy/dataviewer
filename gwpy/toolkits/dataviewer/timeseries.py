@@ -92,6 +92,7 @@ class TimeSeriesMonitor(DataMonitor):
         if len(lines) == 0:
             axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
             params = self.params['draw']
+            # plot channel data
             for i, channel in enumerate(self.data):
                 ax = next(axes)
                 ax.plot(self.data[channel], label=channel.label,
