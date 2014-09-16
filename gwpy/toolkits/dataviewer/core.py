@@ -22,6 +22,8 @@
 import abc
 import datetime
 
+from gwpy.plotter import rcParams
+
 from matplotlib.animation import TimedAnimation
 from matplotlib.axes import Axes
 from matplotlib.backends import interactive_bk
@@ -198,6 +200,10 @@ class Monitor(TimedAnimation):
                     if action == 'draw' and not isinstance(v, (list, tuple)):
                         v = [v] * len(self.channels)
                     self.params[action][param] = v
+        # parse rcParams
+        for param in kwargs.keys():
+            if param in rcParams:
+                rcParams[param] = kwargs.pop(param)
         return kwargs
 
     def set_params(self, action):
