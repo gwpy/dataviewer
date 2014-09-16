@@ -202,6 +202,13 @@ class SpectrumMonitor(TimeSeriesMonitor):
         else:
             _new_axes()
         self.set_params('init')
+        self.set_params('refresh')
+        # set grids
+        for ax in self._fig.axes:
+            if ax.get_xscale() == 'log':
+                ax.grid('on', 'both', 'x')
+            if ax.get_yscale() == 'log':
+                ax.grid('on', 'both', 'y')
         return self._fig
 
     def update_data(self, new):
