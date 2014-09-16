@@ -46,7 +46,7 @@ PARAMS['figure'] = ['figsize']
 PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel', 'xscale', 'yscale',
                   'suptitle']
 PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
-                  'color']
+                  'color', 'alpha']
 PARAMS['refresh'] = ['xlim', 'ylim']
 
 FIGURE_PARAMS = ['title', 'subtitle']
