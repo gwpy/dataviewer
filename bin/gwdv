@@ -35,6 +35,9 @@ __version__ = version.version
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 
 parser = ArgumentParser(description=__doc__)
+parser.add_argument('-V', '--version', action='version',
+                    help='show version number and exit')
+parser.version = __version__
 parser.add_argument('configuration', action='store', type=str,
                     help='Path to configuration file for monitor')
 parser.add_argument('-n', '--non-interactive', action='store_true',
