@@ -21,6 +21,8 @@
 
 from itertools import cycle
 
+from numpy import nan
+
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 from gwpy.plotter import (TimeSeriesPlot, TimeSeriesAxes)
 
@@ -88,12 +90,16 @@ class TimeSeriesMonitor(DataMonitor):
             return self._data
 
     def update_data(self, new):
+        if self.type == 'timeseries':
+            pad = nan
+        else:
+            pad = 0
         if not self.data:
             self.data.append(new)
         elif abs(self.data[self.channels[0]].span) < self.duration:
-            self.data.append(new, resize=True, gap='pad')
+            self.data.append(new, resize=True, gap='pad', pad=pad)
         else:
-            self.data.append(new, resize=False, gap='pad')
+            self.data.append(new, resize=False, gap='pad', pad=pad)
         self.epoch = self.data[self.channels[0]].span[-1]
 
     def refresh(self):
