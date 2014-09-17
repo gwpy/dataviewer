@@ -64,6 +64,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
         kwargs.setdefault('xscale', 'log')
         kwargs.setdefault('yscale', 'log')
         kwargs.setdefault('interval', self.fftlength-self.overlap)
+
+        self.spectra = OrderedDict()
         super(SpectrumMonitor, self).__init__(*channels, **kwargs)
 
     def add_reference(self, refs):
@@ -216,7 +218,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         super(SpectrumMonitor, self).update_data(new)
         epoch = new[self.channels[0]].span[-1]
         # recalculate ASDs
-        self.spectra = OrderedDict()
         if abs(self.data[self.channels[0]].span) < self.fftlength:
             return
         for channel in self.data:
@@ -237,8 +238,14 @@ class SpectrumMonitor(TimeSeriesMonitor):
             params = self.params['draw']
             for i, channel in enumerate(self.spectra):
                 ax = next(axes)
-                ax.plot(self.spectra[channel], label=channel.label,
-                        **dict((key, params[key][i]) for key in params))
+                try:
+                    ax.plot(self.spectra[channel], label=channel.label,
+                            **dict((key, params[key][i]) for key in params))
+                except ValueError as e:
+                    if 'Data has no positive values' in str(e):
+                        e.args = (str(e) + ' Manually declaring the ylim will '
+                                           'prevent this from occuring.',)
+                        raise
                 ax.legend()
         # set up all other iterations
         else:
@@ -246,6 +253,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 line.set_xdata(self.spectra[channel].frequencies.data)
                 line.set_ydata(self.spectra[channel].data)
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
+            ax.relim()
             ax.autoscale_view(scalex=False)
 
         self.logger.info('Figure data updated')
