@@ -104,10 +104,16 @@ class DataMonitor(Monitor):
         pass
 
     def _draw_frame(self, data):
-        self.update_data(data)
-        if not self.paused:
-            self.refresh()
-        self.logger.debug('Iteration complete for epoch %s' % self.epoch)
+        try:
+            self.update_data(data)
+            if not self.paused:
+                self.refresh()
+            self.logger.debug('Iteration complete for epoch %s' % self.epoch)
+        except:
+            self._stop()
+            self.logger.critical('Exception occured, figure will be left '
+                                 'open, but will not update')
+            raise
 
     @abc.abstractmethod
     def update_data(self):
