@@ -48,6 +48,7 @@ class TimeSeriesMonitor(DataMonitor):
             self.duration = kwargs.pop('duration')
         except KeyError:
             try:
+                channels = list(channels)
                 self.duration = float(channels.pop(-1))
             except ValueError:
                 raise ValueError("Monitor duration must be given after "
