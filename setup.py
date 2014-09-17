@@ -130,6 +130,11 @@ class GitVersionMixin(object):
     def update_metadata(self):
         """Import package base and update distribution metadata
         """
+        try:
+             from matplotlib import use
+             use('agg')
+        except ImportError:
+             pass
         from gwpy.toolkits import dataviewer
         self.distribution.metadata.version = dataviewer.__version__
         desc, longdesc = dataviewer.__doc__.split('\n', 1)
@@ -254,17 +259,6 @@ cmdclass['port'] = BuildPortfile
 # -----------------------------------------------------------------------------
 # Process complicated dependencies
 
-# XXX: this can be removed as soon as a stable release of glue can
-#      handle pip/--user
-try:
-    from glue import git_version
-except ImportError as e:
-    e.args = ("GWpyDataViewer requires the GLUE package, which isn\'t available from "
-              "PyPI.\nPlease visit\n"
-              "https://www.lsc-group.phys.uwm.edu/daswg/projects/glue.html\n"
-              "to download and install it manually.",)
-    raise
-
 # don't use setup_requires if just checking for information
 # (credit: matplotlib/setup.py)
 setup_requires = []
@@ -306,17 +300,12 @@ setup(name=DISTNAME,
       scripts=scripts,
       setup_requires=setup_requires,
       requires=[
-          'glue',
           'gwpy',
           'nds2',
           'argparse',
       ],
       install_requires=[
       ] + extra_install_requires,
-      dependency_links=[
-          'https://www.lsc-group.phys.uwm.edu/daswg/download/'
-              'software/source/glue-1.46.tar.gz#egg=glue-1.46',
-      ],
       namespace_packages=['gwpy', 'gwpy.toolkits'],
       use_2to3=False,
       classifiers=[
