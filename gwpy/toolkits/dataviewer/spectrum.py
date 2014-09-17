@@ -206,18 +206,18 @@ class SpectrumMonitor(TimeSeriesMonitor):
             pass
         elif isinstance(combs, basestring):
             self._combinations[combs] = parsecombstring(combs, channels)
-        elif isinstance(combs, basestring) and all([isinstance(c, basestring)
+        elif isinstance(combs, list) and all([isinstance(c, basestring)
                                                     for c in combs]):
             for c in combs:
                 self._combinations[c] = parsecombstring(c, channels)
         elif isinstance(combs, dict):
             for key, item in combs.iteritems():
-                self._combination[key] = parsecombstring(item, channels)
+                self._combinations[key] = parsecombstring(item, channels)
         elif isinstance(combs, tuple) and all([isinstance(c, basestring)
                                                for c in combs]):
             # tuple: (name, comb)
-            self._combination[combs[0]] = parsecombstring(combs[1], channels)
-        elif isinstance(combs, basestring) and all([isinstance(c, tuple)
+            self._combinations[combs[0]] = parsecombstring(combs[1], channels)
+        elif isinstance(combs, list) and all([isinstance(c, tuple)
                                                     for c in combs]):
             for c in combs:
                 self._combinations[c[0]] = parsecombstring(c[1], channels)
@@ -295,9 +295,9 @@ class SpectrumMonitor(TimeSeriesMonitor):
             for line, channel in zip(lines[:ncha], self.channels):
                 line.set_xdata(self.spectra[channel].frequencies.data)
                 line.set_ydata(self.spectra[channel].data)
-            for line, combination in zip(lines[ncha:], self._combinations):
+            for line, combname in zip(lines[ncha:], self._combinations.keys()):
                 try:
-                    comb = eval(combination)
+                    comb = eval(self._combinations[combname])
                     line.set_xdata(comb.frequencies.data)
                     line.set_ydata(comb.data)
                 except KeyError:
