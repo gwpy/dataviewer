@@ -57,9 +57,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # add references
         self._references = OrderedDict()
         self.add_reference(kwargs.pop('reference', None))
-        # add combinations
-        self._combinations = OrderedDict()
-        self.add_combination(kwargs.pop('combination', None), channels)
 
         # init monitor
         kwargs['duration'] = ((self.fftlength - self.overlap) * self.averages +
@@ -191,39 +188,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         else:
             raise ValueError('Unable to parse references.')
 
-    def add_combination(self, combs, channels):
-
-        def parsecombstring(s, channels):
-            for c in [s[n+1] for n in range(len(s)) if s[n] == 'c']:
-                if int(c) > len(channels) or int(c)<0:
-                    raise ValueError('Invalid channel index %s: there are only'
-                                     '%i channels' % (c, len(channels)))
-                else:
-                    s = s.replace('c'+c, 'self.spectra[self.channels[%s]]' % c)
-            return s
-
-        if combs is None:
-            pass
-        elif isinstance(combs, basestring):
-            self._combinations[combs] = parsecombstring(combs, channels)
-        elif isinstance(combs, basestring) and all([isinstance(c, basestring)
-                                                    for c in combs]):
-            for c in combs:
-                self._combinations[c] = parsecombstring(c, channels)
-        elif isinstance(combs, dict):
-            for key, item in combs.iteritems():
-                self._combination[key] = parsecombstring(item, channels)
-        elif isinstance(combs, tuple) and all([isinstance(c, basestring)
-                                               for c in combs]):
-            # tuple: (name, comb)
-            self._combination[combs[0]] = parsecombstring(combs[1], channels)
-        elif isinstance(combs, basestring) and all([isinstance(c, tuple)
-                                                    for c in combs]):
-            for c in combs:
-                self._combinations[c[0]] = parsecombstring(c[1], channels)
-        else:
-            raise ValueError('Unsupported combination syntax.')
-
     def init_figure(self):
         self._fig = self.FIGURE_CLASS(**self.params['figure'])
 
@@ -233,7 +197,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                     ax.plot(spec, label=spec.name, **plotparams)
 
         if self.sep:
-            for n in range(len(self.channels) + len(self._combinations)):
+            for channel in self.channels:
                 _new_axes()
             for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
                 ax.set_xlabel('')
@@ -268,7 +232,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
     def refresh(self):
         # set up first iteration
         nref = len(self._references)
-        ncha = len(self.channels)
         lines = [l for ax in self._fig.axes for l in ax.lines][nref:]
         if len(lines) == 0:
             axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
@@ -284,24 +247,11 @@ class SpectrumMonitor(TimeSeriesMonitor):
                                            'prevent this from occuring.',)
                         raise
                 ax.legend()
-            for label, combination in self._combinations.iteritems():
-                try:
-                    ax = next(axes)
-                    ax.plot(eval(combination), label=label)
-                except KeyError:
-                    self.logger.warning('Did not find channel spectrum.')
         # set up all other iterations
         else:
-            for line, channel in zip(lines[:ncha], self.channels):
+            for line, channel in zip(lines, self.channels):
                 line.set_xdata(self.spectra[channel].frequencies.data)
                 line.set_ydata(self.spectra[channel].data)
-            for line, combination in zip(lines[ncha:], self._combinations):
-                try:
-                    comb = eval(combination)
-                    line.set_xdata(comb.frequencies.data)
-                    line.set_ydata(comb.data)
-                except KeyError:
-                    self.logger.warning('Did not find channel spectrum.')
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             ax.relim()
             ax.autoscale_view(scalex=False)
