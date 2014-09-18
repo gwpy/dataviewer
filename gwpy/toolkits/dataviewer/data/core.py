@@ -112,7 +112,8 @@ class DataMonitor(Monitor):
             self.update_data(data)
             if not self.paused:
                 self.refresh()
-            self.logger.debug('Iteration complete for epoch %s' % self.epoch)
+                self.save()
+            self.logger.info('Monitor updated at epoch %s' % self.epoch)
         except:
             self._stop()
             self.logger.critical('Exception occured, figure will be left '

@@ -97,7 +97,7 @@ class Monitor(TimedAnimation):
             self.buttons['pause'] = self._button('Pause', self.pause, 0.88)
 
         # announce
-        self.logger.debug('Monitor ready to start\n'
+        self.logger.info('Monitor ready to start\n'
                           '    Use the run() method of the monitor to execute')
 
     @abc.abstractmethod
@@ -143,11 +143,11 @@ class Monitor(TimedAnimation):
             return self.run_noninteractive()
 
     def run_interactive(self, block=True):
-        self.logger.debug('Starting monitor')
+        self.logger.info('Starting monitor')
         return show(block=block)
 
     def run_noninteractive(self):
-        self.logger.debug('Starting monitor in non-interactive mode')
+        self.logger.info('Starting monitor in non-interactive mode')
         if not self.figname:
             raise ValueError("Cannot run monitor in 'non-interactive' mode "
                              "without a figname to save to. Please specify a "
@@ -161,12 +161,12 @@ class Monitor(TimedAnimation):
     def sync_clock(self):
         """Pause the `Monitor` to get a user-friendly epoch
         """
-        self.logger.debug('Waiting to align with UTC clock...')
+        self.logger.info('Waiting to align with UTC clock...')
         seconds = 60 % self.interval == 0 and self.interval or 60
         t = datetime.datetime.now()
         while t.second % seconds:
             t = datetime.datetime.now()
-        self.logger.debug('Aligned')
+        self.logger.info('Aligned')
         self.epoch = int(tconvert())
 
     def save(self):

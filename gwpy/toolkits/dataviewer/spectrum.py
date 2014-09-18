@@ -322,7 +322,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             if channel.filter:
                 self.spectra[channel] = self.spectra[channel].filter(
                     *channel.filter)
-        self.logger.info('Data recorded with epoch: %s' % epoch)
+        self.logger.debug('Data recorded with epoch: %s' % epoch)
 
     def refresh(self):
         # set up first iteration
@@ -365,7 +365,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             ax.relim()
             ax.autoscale_view(scalex=False)
 
-        self.logger.info('Figure data updated')
+        self.logger.debug('Figure data updated')
         # add suptitle
         if not 'suptitle' in self.params['init']:
             prefix = ('FFT length: %ss, Overlap: %ss, Averages: %d -- '
@@ -376,8 +376,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             self._fig.suptitle(prefix + suffix)
         self.set_params('refresh')
         self._fig.refresh()
-        self.logger.info('Figure refreshed')
-        self.save()
+        self.logger.debug('Figure refreshed')
 
 
 def parseparams(deflabel, param_in):

@@ -64,7 +64,7 @@ class Logger(logging.Logger):
               '%(message)s'.format(
                  bold=BOLD_SEQ, reset=RESET_SEQ, system='{system}'))
     def __init__(self, name, system='GWDV',
-                 level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S'):
+                 level=logging.INFO, datefmt='%Y-%m-%d %H:%M:%S'):
         try:
             super(Logger, self).__init__(name, level=level)
         except TypeError:

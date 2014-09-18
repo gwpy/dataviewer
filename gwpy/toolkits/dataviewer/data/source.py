@@ -135,7 +135,8 @@ class NDSDataSource(DataSource):
         else:
             self.logger.debug('Connecting to %s...' % (self.host))
         self.connection = nds2.connection(self.host, self.port)
-        self.logger.debug('Connection established')
+        self.logger.info('NDS%d connection established'
+                         % self.connection.get_protocol())
         return self.connection
 
     def backfill(self, start=None):
@@ -172,7 +173,7 @@ class NDSDataSource(DataSource):
                     self.data.append({c: TimeSeries.from_nds2_buffer(buff)},
                                      gap='pad', pad=pad)
         self.epoch = self.data[self.channels[0]].span[-1]
-        self.logger.info('Old data retrieved')
+        self.logger.debug('Old data retrieved')
         self.connection = nds2.connection(self.connection.get_host(),
                                           self.connection.get_port())
         self.frame_seq = self.new_frame_seq()
@@ -274,6 +275,6 @@ class NDSIterator(object):
                            gap=self.gap, pad=self.pad)
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
-        self.logger.info('%d seconds of data received with epoch %s'
+        self.logger.debug('%d seconds of data received with epoch %s'
                          % (span, epoch))
         return new

@@ -118,7 +118,7 @@ class TimeSeriesMonitor(DataMonitor):
                 line.set_ydata(self.data[channel].data)
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             ax.autoscale_view(scalex=False)
-        self.logger.debug('Figure data updated')
+        self.logger.info('Figure data updated')
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             if float(self.epoch) > (self.gpsstart + self.duration):
                 ax.set_xlim(float(self.epoch - self.duration),
@@ -130,7 +130,6 @@ class TimeSeriesMonitor(DataMonitor):
         self.set_params('refresh')
         self._fig.refresh()
         self.logger.debug('Figure refreshed')
-        self.save()
 
     @classmethod
     def add_cli_parser(cls, parser, parents=[]):
