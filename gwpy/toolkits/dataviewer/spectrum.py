@@ -51,8 +51,12 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.fftlength = kwargs.pop('fftlength', 1)
         self.overlap = kwargs.pop('overlap', 0)
         self.averages = kwargs.pop('averages', 10)
-        self.window = kwargs.pop('window', 'hamming')
-        self.method = kwargs.pop('method', 'welch')
+        self.asdkwargs = {}
+        for param in ['window', 'method']:
+            try:
+                self.asdkwargs[param] = kwargs.pop(param)
+            except KeyError:
+                pass
 
         self.spectra = OrderedDict()
         self._flims = None
@@ -307,12 +311,14 @@ class SpectrumMonitor(TimeSeriesMonitor):
         super(SpectrumMonitor, self).update_data(new)
         epoch = new[self.channels[0]].span[-1]
         # recalculate ASDs
-        if abs(self.data[self.channels[0]].span) < self.fftlength:
+        datadur = abs(self.data[self.channels[0]].span)
+        if ((self.asdkwargs.get('method', None) in ['median-mean'] and
+             datadur < (self.fftlength * 2- self.overlap)) or
+            datadur < self.fftlength):
             return
         for channel in self.data:
             self.spectra[channel] = self.data[channel].asd(
-                self.fftlength, self.overlap, method=self.method,
-                window=self.window)
+                self.fftlength, self.overlap, **self.asdkwargs)
             if channel.filter:
                 self.spectra[channel] = self.spectra[channel].filter(
                     *channel.filter)
