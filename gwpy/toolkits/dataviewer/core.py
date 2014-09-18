@@ -91,6 +91,7 @@ class Monitor(TimedAnimation):
         self.logger = logger
 
         self.legend = None
+        self.suptitle = None
 
 
         # set up events connection
@@ -179,11 +180,9 @@ class Monitor(TimedAnimation):
             if 'figsize' in self.params['figure']:
                 self._fig.set_size_inches(self.params['figure']['figsize'])
 
-            if self.legend is None:
-                self._fig.save(self.figname)
-            else:
-                lgd = self.legend
-                self._fig.save(self.figname, bbox_extra_artists=(lgd,))
+            ea = [a for a in [self.legend, self.suptitle] if a is not None]
+            self._fig.save(self.figname, bbox_extra_artists=ea,
+                           bbox_inches='tight')
 
             if list(self._fig.get_size_inches()) != size:
                 self._fig.set_size_inches(size)

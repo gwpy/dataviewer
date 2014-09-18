@@ -375,7 +375,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             utc = re.sub('\.0+', '',
                          Time(self.epoch, format='gps', scale='utc').iso)
             suffix = 'Last updated: %s UTC (%s)' % (utc, self.epoch)
-            self._fig.suptitle(prefix + suffix)
+            self.suptitle = self._fig.suptitle(prefix + suffix)
         self.set_params('refresh')
         self._fig.refresh()
         self.logger.debug('Figure refreshed')
