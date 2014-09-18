@@ -181,11 +181,17 @@ class NDSDataSource(DataSource):
     def iterate(self):
         """Generate a new iterator that will feed data to the `Monitor`
         """
+        if self.type == 'timeseries':
+            pad = nan
+            gap = 'pad'
+        else:
+            gap = 'raise'
+            pad = 0
         self.logger.debug("Initialising data transfer (if this takes a while, "
                           "it's because the channel list is being "
                           "downloaded)...")
         it_ = NDSIterator(self.connection, self.interval, self.channels,
-                          pad=self.type == 'timeseries' and nan or 0)
+                          gap=gap, pad=pad)
         self.logger.debug('Data iteration ready')
         if self._clock:
             self.sync_clock()
@@ -228,7 +234,7 @@ class NDSIterator(object):
     For NDS2 protocol connections, this wrapper is trivial.
     """
     def __init__(self, connection, interval, channels, stride=None,
-                 logger=Logger('nds2'), pad=0):
+                 logger=Logger('nds2'), gap='pad', pad=0):
         """Construct a new iterator
         """
         if stride is None and connection.get_protocol() == 1:
@@ -241,6 +247,7 @@ class NDSIterator(object):
         self.iterator = connection.iterate(
             stride, [Channel(c).ndsname for c in channels])
         self.logger = logger
+        self.gap = gap
         self.pad = pad
 
     def __iter__(self):
@@ -264,8 +271,9 @@ class NDSIterator(object):
             buffers = next(self.iterator)
             for buff, c in zip(buffers, self.channels):
                 new.append({c: TimeSeries.from_nds2_buffer(buff)},
-                           gap='pad', pad=self.pad)
+                           gap=self.gap, pad=self.pad)
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
-        self.logger.info('Data received with epoch %s' % epoch)
+        self.logger.info('%d seconds of data received with epoch %s'
+                         % (span, epoch))
         return new
