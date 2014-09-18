@@ -306,9 +306,9 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 ax.grid('on', 'both', 'y')
         return self._fig
 
-    def update_data(self, new):
+    def update_data(self, new, gap='pad', pad=0):
         # record new data
-        super(SpectrumMonitor, self).update_data(new)
+        super(SpectrumMonitor, self).update_data(new, gap=gap, pad=pad)
         epoch = new[self.channels[0]].span[-1]
         # recalculate ASDs
         datadur = abs(self.data[self.channels[0]].span)
