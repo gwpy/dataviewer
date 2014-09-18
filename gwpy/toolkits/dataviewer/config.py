@@ -180,5 +180,8 @@ def from_ini(filepath, ifo=None):
         combparams[deflabel] = combparamsi
 
     params = dict(basics.items() + pparams.items() + cparams.items())
-    return monitor(*channels, reference=rparams, combination=combparams,
-                   **params)
+    if rparams:
+        params['reference'] = rparams
+    if combparams:
+        params['combination'] = combparams
+    return monitor(*channels, **params)
