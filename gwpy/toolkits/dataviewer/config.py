@@ -102,9 +102,11 @@ def from_ini(filepath, ifo=None):
     # get channel and reference curve names
     sections = cp.sections()
     channels = [c for c in sections if c not in ['monitor', 'plot']
-                if c[:4] != 'ref:']
+                if c[:4] not in ['ref:', 'com:']]
     references = [c for c in sections if c not in ['monitor', 'plot']
                   if c[:4] == 'ref:']
+    combinations = [c for c in sections if c not in ['monitor', 'plot']
+                    if c[:4] == 'com:']
 
     # get channel parameters
     cparams = {}
@@ -127,7 +129,7 @@ def from_ini(filepath, ifo=None):
 
     # get reference parameters
     rparams = OrderedDict()
-    for i, reference in enumerate(references):
+    for reference in references:
         if os.path.basename(reference[4:]) == '':
             # Section is a directory:
             # get parameters (will be applied to all refrences)
@@ -151,23 +153,32 @@ def from_ini(filepath, ifo=None):
             _params = cp.items(reference)
             refpath = reference[4:]
             refform = 'dat'
-            rparamsi = OrderedDict()
-            refname = None
+            deflabel = os.path.basename(refpath).split('.')[0]
+            rparamsi = OrderedDict([('label', deflabel)])
             for param, val in _params:
                 val = safe_eval(val)
                 if param == 'path':
                     refpath = val
                 elif param == 'format':
                     refform = val
-                elif param in ['name', 'label']:
-                    refname = val
                 else:
                     rparamsi[param] = val
             # load curve
             refspec = Spectrum.read(refpath, format=refform)
-            refspec.name = refname or os.path.basename(reference[4:]).split(
-                '.')[0].replace('_', r' ')
             rparams[refspec] = rparamsi
 
+    # get combination parameters # IN PROGRESS
+    combparams = OrderedDict()
+    for comb in combinations:
+        # get combination section
+        _params = cp.items(comb)
+        deflabel = comb[4:]
+        combparamsi = OrderedDict([('label', deflabel)])
+        for param, val in _params:
+            val = safe_eval(val)
+            combparamsi[param] = val
+        combparams[deflabel] = combparamsi
+
     params = dict(basics.items() + pparams.items() + cparams.items())
-    return monitor(*channels, reference=rparams, **params)
+    return monitor(*channels, reference=rparams, combination=combparams,
+                   **params)

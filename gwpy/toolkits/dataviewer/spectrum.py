@@ -55,6 +55,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.method = kwargs.pop('method', 'welch')
 
         self.spectra = OrderedDict()
+        self._flims = None
 
         # add references
         self._references = OrderedDict()
@@ -230,26 +231,31 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         # (assuming first time nspe = 0, so that error checks are performed)
         if len(self.spectra):
-            # PREPARE CHANNELS
             # channel and reference spectra
             cha_spec = {i: self.spectra[self.channels[i]] for i in cha_ids}
             ref_spec = {i: self._references.keys()[i] for i in ref_ids}
-            # check frequency spacing and get frequency boundaries
-            fmin = 0
-            fmax = 1e10
-            df_tolerance = .01
-            if len(cha_spec):
-                df = cha_spec.values()[0].df.value
-            else:
-                df = ref_spec.values()[0].df.value
 
-            for spec in cha_spec.values() + ref_spec.values():
-                fmin = max(fmin, spec.span.start)
-                fmax = min(fmax, spec.span.end)
-                if abs(spec.df.value - df) > df_tolerance:
-                    raise CombinationError('Cannot operate on spectra with'
-                                           ' different df')
+            if self._flims is None:
+                # PREPARE CHANNELS
+                # check frequency spacing and get frequency boundaries
+                fmin = 0
+                fmax = 1e10
+                df_tolerance = .01
+                if len(cha_spec):
+                    df = cha_spec.values()[0].df.value
+                else:
+                    df = ref_spec.values()[0].df.value
+
+                for spec in cha_spec.values() + ref_spec.values():
+                    fmin = max(fmin, spec.span.start)
+                    fmax = min(fmax, spec.span.end)
+                    if abs(spec.df.value - df) > df_tolerance:
+                        raise CombinationError('Cannot operate on spectra with'
+                                               ' different df')
+                self._comb_flims = (fmin, fmax)
             # update spectra
+            fmin = self._comb_flims[0]
+            fmax = self._comb_flims[1]
             for i, spec in cha_spec.iteritems():
                 f = spec.frequencies
                 cha_spec[i] = spec[(fmin < f) & (f < fmax)]
