@@ -51,6 +51,7 @@ PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel', 'xscale', 'yscale',
 PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
                   'color', 'alpha']
 PARAMS['refresh'] = ['xlim', 'ylim']
+PARAMS['legend'] = ['bbox_to_anchor', 'loc', 'borderaxespad', 'ncol']
 
 FIGURE_PARAMS = ['title', 'subtitle']
 AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel']
