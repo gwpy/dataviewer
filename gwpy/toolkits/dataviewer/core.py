@@ -180,11 +180,10 @@ class Monitor(TimedAnimation):
                 self._fig.set_size_inches(self.params['figure']['figsize'])
 
             if self.legend is None:
-                self._fig.save(self.figname, bbox_inches='tight')
+                self._fig.save(self.figname)
             else:
                 lgd = self.legend
-                self._fig.save(self.figname, bbox_extra_artists=(lgd,),
-                               bbox_inches='tight')
+                self._fig.save(self.figname, bbox_extra_artists=(lgd,))
 
             if list(self._fig.get_size_inches()) != size:
                 self._fig.set_size_inches(size)

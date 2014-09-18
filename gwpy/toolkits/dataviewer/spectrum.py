@@ -348,6 +348,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 try:
                     ax = next(axes)
                     ax.plot(self.parse_combination(comb), **parameters)
+                    self.legend = ax.legend(**self.params['legend'])
                 except ValueError:
                     self.logger.warning('Did not find channel spectrum.')
         # set up all other iterations
