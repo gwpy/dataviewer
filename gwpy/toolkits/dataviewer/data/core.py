@@ -75,7 +75,7 @@ class DataMonitor(Monitor):
                 self.add_channel(c, label=label, filter=filter)
 
         # connect to data source
-        self.connect()
+        self.connection = self.connect()
 
         # go
         super(DataMonitor, self).__init__(**kwargs)
