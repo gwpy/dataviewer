@@ -64,6 +64,10 @@ class DataMonitor(Monitor):
 
         # setup channels
         self._channels = OrderedDict()
+        while len(labels) < len(channels):
+            labels.append(None)
+        while len(filters) < len(channels):
+            filters.append(None)
         for c, label, filter in zip(channels, labels, filters):
             if isinstance(c, (list, tuple)):
                 self.add_channel(*c, label=label, filter=filter)
