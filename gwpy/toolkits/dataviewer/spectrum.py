@@ -342,7 +342,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                         e.args = (str(e) + ' Manually declaring the ylim will '
                                            'prevent this from occuring.',)
                         raise
-                ax.legend(**self.params['legend'])
+                self.legend = ax.legend(**self.params['legend'])
             for comb, parameters in self.combinations.iteritems():
                 try:
                     ax = next(axes)
