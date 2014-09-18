@@ -89,107 +89,90 @@ class SpectrumMonitor(TimeSeriesMonitor):
             - `list`: each element can be a `Spectrum` or a tuple following the
             format outlined above.
         """
+        def parseparams(deflabel, param_in):
+            param_out = {'label': deflabel}
+            if isinstance(param_in, dict):
+                for p, v in param_in.iteritems():
+                    if p in PARAMS['draw']+['label']:
+                        param_out[p] = v
+                    else:
+                        if p in PARAMS['init'] + \
+                                PARAMS['refresh']:
+                            m = ': this is a global parameter.'
+                        else:
+                            m = '.'
+                        raise ValueError('Unsupported parameter %r for'
+                                         ' reference plotting%s' % (p, m))
+            elif isinstance(param_in, list)\
+            and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
+                for (p, v) in param_in:
+                    if p in PARAMS['draw']+['label']:
+                        param_out[p] = v
+                    else:
+                        if p in PARAMS['init'] + \
+                                PARAMS['refresh']:
+                            m = ': this is a global parameter.'
+                        else:
+                            m = '.'
+                        raise ValueError('Unsupported parameter %r for'
+                                         ' reference plotting%s' % (p, m))
+            else:
+                raise ValueError('Invalid reference syntax.')
+            return param_out
+
         if refs is None:
             # no references provided
             pass
 
         elif isinstance(refs, Spectrum):
-            # single reference spectrum provided
-            refs.name = refs.name or 'Reference'
-            self._references[refs] = {}
+            self._references[refs] = {'label': refs.name or 'Reference'}
 
-        elif isinstance(refs, dict) and \
-                all([isinstance(r, Spectrum) for r in refs.keys()]):
-                # single reference and config provided
-                for r, params in refs.iteritems():
-                    r.name = r.name or 'Reference'
-                    plotparam = {}
-                    if isinstance(params, dict):
-                        for param, value in params.iteritems():
-                            if param in ['label', 'name']:
-                                r.name = value
-                            elif param in PARAMS['draw']:
-                                plotparam[param] = value
-                            else:
-                                if param in PARAMS['init'] + \
-                                        PARAMS['refresh']:
-                                    message = ': this is a global parameter.'
-                                else:
-                                    message = '.'
-                                raise ValueError('Unsupported parameter '
-                                                 '%r for reference '
-                                                 'plotting%s'
-                                                 % (param, message))
-                    self._references[r] = plotparam
-
-        elif isinstance(refs, tuple) and isinstance(refs[0], Spectrum):
-            # tuple of reference and parameters provided
-            refs[0].name = refs[0].name or 'Reference'
-            if len(refs) == 2:
+        elif isinstance(refs, dict):
+            print 'dict'
+            if all([isinstance(r, Spectrum) for r in refs.keys()]):
                 # settings provided
-                plotparam = {}
-                if isinstance(refs[1], dict):
-                    for param, value in refs[1].iteritems():
-                        # parse plot parameters
-                        if param in ['label', 'name']:
-                            refs[0].name = value
-                        elif param in PARAMS['draw']:
-                            plotparam[param] = value
-                        else:
-                            if param in PARAMS['init'] + PARAMS['refresh']:
-                                message = ': this is a global parameter.'
-                            else:
-                                message = '.'
-                            raise ValueError('Unsupported parameter'
-                                             ' %r for reference '
-                                             'plotting%s' % (param, message))
-                self._references[refs[0]] = plotparam
-            elif len(refs) == 1:
-                # no settings provided
-                self._references[refs[0]] = {}
+                for r, params in refs.iteritems():
+                    label = r.name or 'Reference'
+                    self._references[r] = parseparams(label, params)
+            elif all([isinstance(r, basestring) for r in refs.keys()]):
+                # only label provided (as key)
+                for rname, r in refs.iteritems():
+                    self._references[r] = {'label': rname}
             else:
-                raise ValueError('Unsupported reference formatting: tuple'
-                                 'has too many elements.')
+                raise ValueError('Invalid reference syntax.')
 
-        elif isinstance(refs, list):
+        elif isinstance(refs, tuple) and len(refs) == 2:
+            print 'short tuple'
+            if isinstance(refs[0], Spectrum):
+                # settings provided
+                label = refs[0].name or 'Reference'
+                self._references[refs[0]] = parseparams(label, refs[1])
+            elif isinstance(refs[0], basestring) & \
+                    isinstance(refs[1], Spectrum):
+                # only label provided (as first element)
+                self._references[refs[1]] = {'label': refs[0]}
+            else:
+                raise ValueError('Invalid reference syntax.')
+
+        elif isinstance(refs, (list, tuple)):
+            print 'list'
             # list of references provided
             for r in refs:
                 if isinstance(r, Spectrum):
                     # single spectrum
-                    r.name = r.name or 'Reference'
-                    self._references[r] = {}
-                elif isinstance(r, tuple) and isinstance(r[0], Spectrum):
-                    # tuple of reference and parameters
-                    r[0].name = r[0].name or 'Reference'
-                    if len(refs) == 2:
-                        # settings provided
-                        plotparam = {}
-                        if isinstance(r[1], dict):
-                            for param, value in r[1].iteritems():
-                                if param in ['label', 'name']:
-                                    r[0].name = value
-                                elif param in PARAMS['draw']:
-                                    plotparam[param] = value
-                                else:
-                                    if param in PARAMS['init'] + \
-                                            PARAMS['refresh']:
-                                        message=': this is a global parameter.'
-                                    else:
-                                        message = '.'
-                                    raise ValueError('Unsupported parameter'
-                                                     '%r for reference '
-                                                     'plotting%s'
-                                                     % (param, message))
-                        self._references[r[0]] = plotparam
-
-                    elif len(refs) == 1:
-                        # no settings provided
-                        self._references[r[0]] = {}
+                    self._references[r] = {'label': r.name or 'Reference'}
+                elif isinstance(r, tuple) and len(r) == 2:
+                    if isinstance(r[0], Spectrum):
+                        label = r[0].name or 'Reference'
+                        self._references[r[0]] = parseparams(label, r[1])
+                    elif isinstance(r[0], basestring):
+                        self._references[r[1]] = {'label': refs[0]}
                     else:
-                        raise ValueError('Unsupported reference formatting:'
-                                         'tuple has too many elements.')
+                        raise ValueError('Invalid reference syntax.')
+                else:
+                    raise ValueError('Invalid reference syntax.')
         else:
-            raise ValueError('Unable to parse references.')
+            raise ValueError('Invalid reference syntax.')
 
     def add_combination(self, combs, channels):
 
@@ -286,7 +269,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
             for spec, plotparams in self._references.iteritems():
-                    ax.plot(spec, label=spec.name, **plotparams)
+                    ax.plot(spec, **plotparams)
 
         if self.sep:
             for n in range(len(self.channels) + len(self._combinations)):
