@@ -271,8 +271,14 @@ class NDSIterator(object):
         while span < self.interval:
             buffers = next(self.iterator)
             for buff, c in zip(buffers, self.channels):
-                new.append({c: TimeSeries.from_nds2_buffer(buff)},
-                           gap=self.gap, pad=self.pad)
+                ts = TimeSeries.from_nds2_buffer(buff)
+                try:
+                    new.append({c: ts}, gap=self.gap, pad=self.pad)
+                except ValueError as e:
+                    if 'discontiguous' in str(e):
+                        e.args = ('NDS connection dropped data between %d and '
+                                  '%d' % (epoch, ts.span[0]),)
+                    raise
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
         self.logger.debug('%d seconds of data received with epoch %s'
