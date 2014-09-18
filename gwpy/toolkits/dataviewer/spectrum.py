@@ -54,6 +54,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.window = kwargs.pop('window', 'hamming')
         self.method = kwargs.pop('method', 'welch')
 
+        self.spectra = OrderedDict()
+
         # add references
         self._references = OrderedDict()
         self.add_reference(kwargs.pop('reference', None))
@@ -68,7 +70,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         kwargs.setdefault('yscale', 'log')
         kwargs.setdefault('interval', self.fftlength-self.overlap)
 
-        self.spectra = OrderedDict()
         super(SpectrumMonitor, self).__init__(*channels, **kwargs)
 
     def add_reference(self, refs):
@@ -213,16 +214,22 @@ class SpectrumMonitor(TimeSeriesMonitor):
         Returns
         -------
         """
-        ncha = len(self.channels)
-        nref = len(self._references)
-        nspe = len(self.spectra)
-
         # channel and reference numbers
         cha_ids = [int(s[n+1]) for n in range(len(s)) if s[n] == 'C']
         ref_ids = [int(s[n+1]) for n in range(len(s)) if s[n] == 'R']
 
+        nref = len(self._references)
+
+        try:
+            ncha = len(self.channels)
+            if any([ci >= ncha for ci in cha_ids]) or any(
+                [rid >= nref for ri in ref_ids]):
+                raise IndexError('Combination out of bounds.')
+        except AttributeError:
+	    print 'No channels found.'
+
         # (assuming first time nspe = 0, so that error checks are performed)
-        if nspe:
+        if len(self.spectra):
             # PREPARE CHANNELS
             # channel and reference spectra
             cha_spec = {i: self.spectra[self.channels[i]] for i in cha_ids}
@@ -255,9 +262,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         elif '=' in s:
             raise ValueError('Forbbiden character in combination: "=".')
-
-        elif any(cha_ids >= ncha) or any(ref_ids >= nref):
-            raise IndexError('Combination out of bounds.')
 
         else:
             return s
@@ -326,7 +330,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 try:
                     ax = next(axes)
                     ax.plot(self.parse_combination(comb), **parameters)
-                except KeyError:
+                except ValueError:
                     self.logger.warning('Did not find channel spectrum.')
         # set up all other iterations
         else:
@@ -338,7 +342,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                     comb = self.parse_combination(comb)
                     line.set_xdata(comb.frequencies.data)
                     line.set_ydata(comb.data)
-                except KeyError:
+                except ValueError:
                     self.logger.warning('Did not find channel spectrum.')
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             ax.relim()
