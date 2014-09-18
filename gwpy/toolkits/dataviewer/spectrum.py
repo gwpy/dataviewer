@@ -223,10 +223,10 @@ class SpectrumMonitor(TimeSeriesMonitor):
         try:
             ncha = len(self.channels)
             if any([ci >= ncha for ci in cha_ids]) or any(
-                [rid >= nref for ri in ref_ids]):
+                [ri >= nref for ri in ref_ids]):
                 raise IndexError('Combination out of bounds.')
         except AttributeError:
-	    print 'No channels found.'
+            pass
 
         # (assuming first time nspe = 0, so that error checks are performed)
         if len(self.spectra):
@@ -237,20 +237,25 @@ class SpectrumMonitor(TimeSeriesMonitor):
             # check frequency spacing and get frequency boundaries
             fmin = 0
             fmax = 1e10
-            df = cha_spec[0].df.value
+            df_tolerance = .01
+            if len(cha_spec):
+                df = cha_spec.values()[0].df.value
+            else:
+                df = ref_spec.values()[0].df.value
+
             for spec in cha_spec.values() + ref_spec.values():
                 fmin = max(fmin, spec.span.start)
                 fmax = min(fmax, spec.span.end)
-                if spec.df.value != df:
-                    raise ValueError('Operations on spectra of different '
-                                     'frequency spacing are not supported.')
+                if abs(spec.df.value - df) > df_tolerance:
+                    raise CombinationError('Cannot operate on spectra with'
+                                           ' different df')
             # update spectra
             for i, spec in cha_spec.iteritems():
                 f = spec.frequencies
-                cha_spec[i] = spec[(fmin <= f) & (f <= fmax)]
+                cha_spec[i] = spec[(fmin < f) & (f < fmax)]
             for i, spec in ref_spec.iteritems():
                 f = spec.frequencies
-                ref_spec[i] = spec[(fmin <= f) & (f <= fmax)]
+                ref_spec[i] = spec[(fmin < f) & (f < fmax)]
             # reformat string
             for i in cha_ids:
                 s = s.replace('C%i' % i, 'cha_spec[%i]' % i)
@@ -395,3 +400,9 @@ def parseparams(deflabel, param_in):
     return param_out
 
 register_monitor(SpectrumMonitor)
+
+
+class CombinationError(Exception):
+    # this custom exception was created specifically to avoid the error caused
+    # by different df's in combinations being caught at the moment of plotting
+    pass
