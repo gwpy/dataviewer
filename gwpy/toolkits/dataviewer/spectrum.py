@@ -287,7 +287,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
             for spec, plotparams in self._references.iteritems():
-                    ax.plot(spec, **plotparams)
+                ax.plot(spec, **plotparams)
+                self.legend = ax.legend(**self.params['legend'])
 
         if self.sep:
             for n in range(len(self.channels) + len(self.combinations)):
