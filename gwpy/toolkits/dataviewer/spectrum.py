@@ -58,7 +58,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self._references = OrderedDict()
         self.add_reference(kwargs.pop('reference', None))
         # add combinations
-        self._combinations = OrderedDict()
+        self.combinations = OrderedDict()
         self.add_combination(kwargs.pop('combination', None), channels)
 
         # init monitor
@@ -89,36 +89,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
             - `list`: each element can be a `Spectrum` or a tuple following the
             format outlined above.
         """
-        def parseparams(deflabel, param_in):
-            param_out = {'label': deflabel}
-            if isinstance(param_in, dict):
-                for p, v in param_in.iteritems():
-                    if p in PARAMS['draw']+['label']:
-                        param_out[p] = v
-                    else:
-                        if p in PARAMS['init'] + \
-                                PARAMS['refresh']:
-                            m = ': this is a global parameter.'
-                        else:
-                            m = '.'
-                        raise ValueError('Unsupported parameter %r for'
-                                         ' reference plotting%s' % (p, m))
-            elif isinstance(param_in, list)\
-            and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
-                for (p, v) in param_in:
-                    if p in PARAMS['draw']+['label']:
-                        param_out[p] = v
-                    else:
-                        if p in PARAMS['init'] + \
-                                PARAMS['refresh']:
-                            m = ': this is a global parameter.'
-                        else:
-                            m = '.'
-                        raise ValueError('Unsupported parameter %r for'
-                                         ' reference plotting%s' % (p, m))
-            else:
-                raise ValueError('Invalid reference syntax.')
-            return param_out
 
         if refs is None:
             # no references provided
@@ -128,7 +98,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
             self._references[refs] = {'label': refs.name or 'Reference'}
 
         elif isinstance(refs, dict):
-            print 'dict'
             if all([isinstance(r, Spectrum) for r in refs.keys()]):
                 # settings provided
                 for r, params in refs.iteritems():
@@ -142,7 +111,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 raise ValueError('Invalid reference syntax.')
 
         elif isinstance(refs, tuple) and len(refs) == 2:
-            print 'short tuple'
             if isinstance(refs[0], Spectrum):
                 # settings provided
                 label = refs[0].name or 'Reference'
@@ -155,7 +123,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 raise ValueError('Invalid reference syntax.')
 
         elif isinstance(refs, (list, tuple)):
-            print 'list'
             # list of references provided
             for r in refs:
                 if isinstance(r, Spectrum):
@@ -178,90 +145,122 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         nch = len(channels)
 
-        def parsecombstring(s, nchannels):
-            if '=' in s:
-                raise ValueError('Forbbiden character in combinations: "=".')
-
-            for c in [s[n+1] for n in range(len(s)) if s[n] == 'c']:
-                if int(c) > nchannels or int(c) < 0:
-                    raise ValueError('Invalid channel index %s: there are only'
-                                     '%i channels' % (c, nchannels))
-                else:
-                    s = s.replace('c'+c, 'self.spectra[self.channels[%s]]' % c)
-            return s
-
-        def parseparams(l, param_in):
-            # extract parameters
-            paramdict_out = {'label': l}
-            if isinstance(param_in, dict):
-                for param, value in param_in.iteritems():
-                    if param in PARAMS['draw']+['label']:
-                        plotparam[param] = value
-                    else:
-                        if param in PARAMS['init'] + \
-                                PARAMS['refresh']:
-                            message = ': this is a global parameter.'
-                        else:
-                            message = '.'
-                        raise ValueError('Unsupported parameter '
-                                         '%r for reference '
-                                         'plotting%s'
-                                         % (param, message))
-            elif isinstance(param_in, (list, tuple)) and all(
-                    [isinstance(t, tuple) for t in param_in]):
-                for (param, value) in param_in:
-                    if param in PARAMS['draw']+['label', 'name']:
-                        plotparam[param] = value
-                    else:
-                        if param in PARAMS['init'] + \
-                                PARAMS['refresh']:
-                            message = ': this is a global parameter.'
-                        else:
-                            message = '.'
-                        raise ValueError('Unsupported parameter '
-                                         '%r for reference '
-                                         'plotting%s'
-                                         % (param, message))
-            else:
-                raise ValueError('Unsupported combination syntax.')
-            return paramdict_out
-
         # parse combinations
         if combs is None:
             pass
-        # one string
+
         elif isinstance(combs, basestring):
-            self._combinations[parsecombstring(combs, nch)] = {'label': combs}
-        # list or tuple with...
-        elif isinstance(combs, (list, tuple)):
-            # ...strings
-            if all([isinstance(c, basestring) for c in combs]):
-                for c in combs:
-                    self._combinations[parsecombstring(c, nch)] = {'label': c}
-            # ...tuples
-            elif all([isinstance(c, tuple) for c in combs]):
-                for c in combs:
+            cstring = self.parse_combination(combs)
+            self.combinations[cstring] = {'label': combs}
+
+        elif isinstance(combs, dict)\
+                and all([isinstance(r, basestring) for r in combs.keys()]):
+            for (k, v) in combs.iteritems():
+                if isinstance(v, basestring):
                     # {label: comb}
-                    if all([isinstance(i, basestring) for i in c]):
-                        pp = {'label': c[0]}
-                        self._combinations[parsecombstring(c[1], nch)] = pp
+                    pp = {'label': k}
+                    self.combinations[self.parse_combination(v)] = pp
+                elif isinstance(v, dict):
                     # {comb: param}
-                    else:
-                        pp = parseparams(c[0], c[1])
-                        self._combinations[parsecombstring(c[0], nch)] = pp
-        # dictionary
-        elif isinstance(combs, dict):
-            for key, item in combs.iteritems():
-                # {label: comb}
-                if isinstance(item, basestring):
-                    plotparam = {'label' : key}
-                    self._combinations[parsecombstring(item, nch)] = plotparam
-                # {comb: param}
+                    cstring = self.parse_combination(k)
+                    self.combinations[cstring] = parseparams(cstring, v)
                 else:
-                    plotparam = parseparams(key, item)
-                    self._combinations[parsecombstring(key, nch)] = plotparam
+                    raise ValueError('Invalid reference syntax.')
+
+        elif isinstance(combs, tuple) and len(combs) == 2 and isinstance(
+                combs[0], basestring):
+            k = combs[0]
+            v = combs[1]
+            if isinstance(v, basestring):
+                # {label: comb}
+                pp = {'label': k}
+                self.combinations[self.parse_combination(v)] = pp
+            elif isinstance(v, dict):
+                # {comb: param}
+                cstring = self.parse_combination(k)
+                self.combinations[cstring] = parseparams(cstring, v)
+            else:
+                raise ValueError('Invalid reference syntax.')
+
+        elif isinstance(combs, (list, tuple)):
+            for c in combs:
+                if isinstance(c, basestring):
+                    self.combinations[self.parse_combination(c)] = {'label':c}
+                elif isinstance(c, tuple) and len(c) == 2:
+                    k = combs[0]
+                    v = combs[1]
+                    if isinstance(v, basestring):
+                        # {label: comb}
+                        pp = {'label': k}
+                        self.combinations[self.parse_combination(v)] = pp
+                    elif isinstance(v, dict):
+                        # {comb: param}
+                        cstring = self.parse_combination(k)
+                        self.combinations[cstring] = parseparams(cstring, v)
+                    else:
+                        raise ValueError('Invalid reference syntax.')
         else:
-            raise ValueError('Unsupported combination syntax.')
+            raise ValueError('Invalid reference syntax.')
+
+    def parse_combination(self, s):
+        """Parses combination instructions.
+
+        Arguments
+        ---------
+        s: `string`
+            String containing combination instructions.
+
+        Returns
+        -------
+        """
+        ncha = len(self.channels)
+        nref = len(self._references)
+        nspe = len(self.spectra)
+
+        # channel and reference numbers
+        cha_ids = [int(s[n+1]) for n in range(len(s)) if s[n] == 'C']
+        ref_ids = [int(s[n+1]) for n in range(len(s)) if s[n] == 'R']
+
+        # (assuming first time nspe = 0, so that error checks are performed)
+        if nspe:
+            # PREPARE CHANNELS
+            # channel and reference spectra
+            cha_spec = {i: self.spectra[self.channels[i]] for i in cha_ids}
+            ref_spec = {i: self._references.keys()[i] for i in ref_ids}
+            # check frequency spacing and get frequency boundaries
+            fmin = 0
+            fmax = 1e10
+            df = cha_spec[0].df.value
+            for spec in cha_spec.values() + ref_spec.values():
+                fmin = max(fmin, spec.span.start)
+                fmax = min(fmax, spec.span.end)
+                if spec.df.value != df:
+                    raise ValueError('Operations on spectra of different '
+                                     'frequency spacing are not supported.')
+            # update spectra
+            for i, spec in cha_spec.iteritems():
+                f = spec.frequencies
+                cha_spec[i] = spec[(fmin <= f) & (f <= fmax)]
+            for i, spec in ref_spec.iteritems():
+                f = spec.frequencies
+                ref_spec[i] = spec[(fmin <= f) & (f <= fmax)]
+            # reformat string
+            for i in cha_ids:
+                s = s.replace('C%i' % i, 'cha_spec[%i]' % i)
+            for i in ref_ids:
+                s = s.replace('R%i' % i, 'ref_spec[%i]' % i)
+            # evaluate function
+            spec_out = eval(s)
+            return spec_out
+
+        elif '=' in s:
+            raise ValueError('Forbbiden character in combination: "=".')
+
+        elif any(cha_ids >= ncha) or any(ref_ids >= nref):
+            raise IndexError('Combination out of bounds.')
+
+        else:
+            return s
 
     def init_figure(self):
         self._fig = self.FIGURE_CLASS(**self.params['figure'])
@@ -272,7 +271,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                     ax.plot(spec, **plotparams)
 
         if self.sep:
-            for n in range(len(self.channels) + len(self._combinations)):
+            for n in range(len(self.channels) + len(self.combinations)):
                 _new_axes()
             for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
                 ax.set_xlabel('')
@@ -301,7 +300,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 window=self.window)
             if channel.filter:
                 self.spectra[channel] = self.spectra[channel].filter(
-                                        *channel.filter)
+                    *channel.filter)
         self.logger.info('Data recorded with epoch: %s' % epoch)
 
     def refresh(self):
@@ -323,10 +322,10 @@ class SpectrumMonitor(TimeSeriesMonitor):
                                            'prevent this from occuring.',)
                         raise
                 ax.legend()
-            for combination, parameters in self._combinations.iteritems():
+            for comb, parameters in self.combinations.iteritems():
                 try:
                     ax = next(axes)
-                    ax.plot(eval(combination), **parameters)
+                    ax.plot(self.parse_combination(comb), **parameters)
                 except KeyError:
                     self.logger.warning('Did not find channel spectrum.')
         # set up all other iterations
@@ -334,9 +333,9 @@ class SpectrumMonitor(TimeSeriesMonitor):
             for line, channel in zip(lines[:ncha], self.channels):
                 line.set_xdata(self.spectra[channel].frequencies.data)
                 line.set_ydata(self.spectra[channel].data)
-            for line, comb in zip(lines[ncha:], self._combinations.keys()):
+            for line, comb in zip(lines[ncha:], self.combinations.keys()):
                 try:
-                    comb = eval(comb)
+                    comb = self.parse_combination(comb)
                     line.set_xdata(comb.frequencies.data)
                     line.set_ydata(comb.data)
                 except KeyError:
@@ -358,5 +357,37 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self._fig.refresh()
         self.logger.info('Figure refreshed')
         self.save()
+
+
+def parseparams(deflabel, param_in):
+    param_out = {'label': deflabel}
+    if isinstance(param_in, dict):
+        for p, v in param_in.iteritems():
+            if p in PARAMS['draw']+['label']:
+                param_out[p] = v
+            else:
+                if p in PARAMS['init'] + \
+                        PARAMS['refresh']:
+                    m = ': this is a global parameter.'
+                else:
+                    m = '.'
+                raise ValueError('Unsupported parameter %r for'
+                                 'single line plotting%s' % (p, m))
+    elif isinstance(param_in, list)\
+    and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
+        for (p, v) in param_in:
+            if p in PARAMS['draw']+['label']:
+                param_out[p] = v
+            else:
+                if p in PARAMS['init'] + \
+                        PARAMS['refresh']:
+                    m = ': this is a global parameter.'
+                else:
+                    m = '.'
+                raise ValueError('Unsupported parameter %r for'
+                                 ' single line plotting%s' % (p, m))
+    else:
+        raise ValueError('Invalid reference syntax.')
+    return param_out
 
 register_monitor(SpectrumMonitor)
