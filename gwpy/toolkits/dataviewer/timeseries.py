@@ -90,17 +90,13 @@ class TimeSeriesMonitor(DataMonitor):
             self._data = TimeSeriesDict()
             return self._data
 
-    def update_data(self, new):
-        if self.type == 'timeseries':
-            pad = nan
-        else:
-            pad = 0
+    def update_data(self, new, gap='pad', pad=nan):
         if not self.data:
             self.data.append(new)
         elif abs(self.data[self.channels[0]].span) < self.duration:
-            self.data.append(new, resize=True, gap='pad', pad=pad)
+            self.data.append(new, resize=True, gap=gap, pad=pad)
         else:
-            self.data.append(new, resize=False, gap='pad', pad=pad)
+            self.data.append(new, resize=False, gap=gap, pad=pad)
         self.epoch = self.data[self.channels[0]].span[-1]
 
     def refresh(self):
