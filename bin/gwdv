@@ -57,3 +57,7 @@ try:
     mon.run(interactive=not args.non_interactive)
 except KeyboardInterrupt:
     mon.logger.debug('Ctrl-c detected, monitor will exit.')
+except Exception:
+    if args.non_interactive:
+        mon._fig.close()
+    raise
