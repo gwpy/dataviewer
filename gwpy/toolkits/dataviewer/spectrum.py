@@ -236,8 +236,9 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # (assuming first time nspe = 0, so that error checks are performed)
         if len(self.spectra):
             # channel and reference spectra
-            cha_spec = {i: self.spectra[self.channels[i]] for i in cha_ids}
-            ref_spec = {i: self._references.keys()[i] for i in ref_ids}
+            cha_spec = dict((i, self.spectra[self.channels[i]]) for
+                            i in cha_ids)
+            ref_spec = dict((i, self._references.keys()[i]) for i in ref_ids)
 
             if self._flims is None:
                 # PREPARE CHANNELS
