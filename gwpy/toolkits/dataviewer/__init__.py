@@ -42,3 +42,4 @@ from .config import *
 from .registry import *
 from .timeseries import *
 from .spectrum import *
+from .spectrogram import *

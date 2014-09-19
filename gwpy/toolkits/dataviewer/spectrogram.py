@@ -25,7 +25,6 @@ from itertools import cycle
 from astropy.time import Time
 
 from gwpy.plotter import (SpectrogramPlot, TimeSeriesAxes)
-from gwpy.spectrum.core import TimeSeries
 
 from . import version
 from .data.core import OrderedDict
@@ -36,19 +35,19 @@ from .timeseries import TimeSeriesMonitor
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __version__ = version.version
 
-__all__ = ['SpectrumMonitor']
+__all__ = ['SpectrogramMonitor']
 
 
 class SpectrogramMonitor(TimeSeriesMonitor):
     """Monitor some spectra
     """
-    type = 'spectrum'
+    type = 'spectrogram'
     FIGURE_CLASS = SpectrogramPlot
     AXES_CLASS = TimeSeriesAxes
 
     def __init__(self, *channels, **kwargs):
         # get time parameters
-        self.duration = kwargs.pop('duration')
+        self.duration = kwargs.pop('duration', 10)
         # get FFT parameters
         self.stride = kwargs.pop('stride', 20)
         self.fftlength = kwargs.pop('fftlength', 1)
@@ -62,14 +61,15 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         self.spectrograms = OrderedDict()
         self._flims = None
-        self._colorbar_label = kwargs.pop('colorbar_label') or ' '
+        self._colorbar_label = kwargs.pop('colorbar_label', ' ')
         self._colorbar = None
 
         # init monitor
         kwargs.setdefault('yscale', 'log')  # ?
         kwargs.setdefault('interval', self.fftlength-self.overlap)
 
-        super(SpectrogramMonitor, self).__init__(*channels, **kwargs)
+        super(SpectrogramMonitor, self).__init__(*channels,
+              duration=self.duration, **kwargs)
 
     def init_figure(self):
         self._fig = self.FIGURE_CLASS(**self.params['figure'])
@@ -85,7 +85,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             ax.set_xlabel('')
         self.set_params('init')
         self.set_params('refresh')
-        self._colorbar = self._fig.add_colorbar(label=self._colorbar_label)
+        self._colorbar = None #self._fig.add_colorbar(label=self._colorbar_label)
         return self._fig
 
     def update_data(self, new, gap='pad', pad=0):
@@ -103,10 +103,13 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             newspec = self.data[channel].spectrogram(self.stride,
                                                      fftlength=self.fftlength,
                                                      overlap=self.overlap,
-                                                     **self.asdkwargs)
+                                                     **self.asdkwargs)**(1/2.)
             if channel.filter:
                 newspec = newspec.filter(*channel.filter)
-            self.spectrograms[channel].append(newspec)
+            try:
+                self.spectrograms[channel].append(newspec)
+            except KeyError:
+                self.spectrograms[channel] = newspec
             # to whiten .ratio(median)
 
         self.logger.debug('Data recorded with epoch: %s' % epoch)
