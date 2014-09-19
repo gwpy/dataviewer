@@ -153,11 +153,11 @@ def from_ini(filepath, ifo=None):
         channels[i] = channel % {'ifo': ifo}
         for param, val in _params:
             val = safe_eval(val)
-            try:
-                cparams[param].append(val)
-            except KeyError:
-                cparams[param] = [None] * i
-                cparams[param].append(val)
+            if param not in cparams:
+                cparams[param] = []
+            while len(cparams[param]) < i+1:
+                cparams[param].append(None)
+            cparams[param].append(val)
 
     # get reference parameters
     rparams = OrderedDict()
