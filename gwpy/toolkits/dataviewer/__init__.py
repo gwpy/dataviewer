@@ -25,6 +25,18 @@ __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __credits__ = 'The LIGO Laboratory, and the LIGO Scientific Collaboration'
 __version__ = version.version
 
+from gwpy.plotter import rcParams
+
+# set default params
+rcParams.update({
+    'figure.subplot.bottom': 0.17,
+    'figure.subplot.left': 0.1,
+    'figure.subplot.right': 0.9,
+    'figure.subplot.top': 0.90,
+})
+
+del rcParams
+
 # import user-level monitors
 from .config import *
 from .registry import *
