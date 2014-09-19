@@ -340,7 +340,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 ax = next(axes)
                 try:
                     ax.plot(self.spectra[channel], label=channel.label,
-                            **dict((key, params[key][i]) for key in params))
+                            **dict((key, params[key][i]) for key in params
+                                   if params[key][i]))
                 except ValueError as e:
                     if 'Data has no positive values' in str(e):
                         e.args = (str(e) + ' Manually declaring the ylim will '
