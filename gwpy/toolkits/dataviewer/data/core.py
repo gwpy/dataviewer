@@ -61,6 +61,7 @@ class DataMonitor(Monitor):
 
         labels = kwargs.pop('label', [None] * len(channels))
         filters = kwargs.pop('filter', [None] * len(channels))
+        frametypes = kwargs.pop('frametype', [None] * len(channels))
 
         # setup channels
         self._channels = OrderedDict()
@@ -68,11 +69,14 @@ class DataMonitor(Monitor):
             labels.append(None)
         while len(filters) < len(channels):
             filters.append(None)
-        for c, label, filter in zip(channels, labels, filters):
+        for c, label, filter, frametype in zip(
+                channels, labels, filters, frametypes):
             if isinstance(c, (list, tuple)):
-                self.add_channel(*c, label=label, filter=filter)
+                self.add_channel(*c, label=label, filter=filter,
+                                 frametype=frametype)
             else:
-                self.add_channel(c, label=label, filter=filter)
+                self.add_channel(c, label=label, filter=filter,
+                                 frametype=frametype)
 
         # connect to data source
         self.connection = self.connect()
