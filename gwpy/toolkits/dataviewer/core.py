@@ -68,7 +68,7 @@ class Monitor(TimedAnimation):
 
     def __init__(self, fig=None, interval=1, blit=True, repeat=False,
                  logger=Logger('monitor'), figname=None, save_every=1,
-                 pause=False, clock=False, **kwargs):
+                 tight_bbox=False, pause=False, clock=False, **kwargs):
         # record timing
         self.gpsstart = tconvert('now')
         self._clock = clock
@@ -83,6 +83,7 @@ class Monitor(TimedAnimation):
                                       blit=blit, repeat=repeat, **kwargs)
 
         self.figname = figname
+        self.tight = tight_bbox or 'bbox_to_anchor' in self.params['legend']
         self.save_every = save_every
         self.refresh_count = 0
         if save_every * interval < 10 and figname:
@@ -182,7 +183,7 @@ class Monitor(TimedAnimation):
 
             ea = [a for a in [self.legend, self.suptitle] if a is not None]
             self._fig.save(self.figname, bbox_extra_artists=ea,
-                           bbox_inches='tight')
+                           bbox_inches=self.tight and 'tight' or None)
 
             if list(self._fig.get_size_inches()) != size:
                 self._fig.set_size_inches(size)
