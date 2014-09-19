@@ -88,8 +88,13 @@ def from_ini(filepath, ifo=None):
     # get ifo
     ifo = ifo or os.getenv('IFO', None)
     # read configuration file
+    if isinstance(filepath, str):
+        filepath = filepath.split(',')
     cp = ConfigParser()
-    cp.read(filepath)
+    readok = cp.read(filepath)
+    if not len(readok) == len(filepath):
+        failed = [cf for cf in filepath if cf not in readok]
+        raise ValueError("Failed to read configuration file %r" % failed[0])
     # get basic params
     basics = dict(cp.items('monitor', raw=True))
     type_ = basics.pop('type')
