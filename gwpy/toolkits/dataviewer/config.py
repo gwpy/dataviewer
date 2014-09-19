@@ -76,6 +76,10 @@ __version__ = version.version
 
 
 def safe_eval(val):
+    """Evaluate the given string as a line of python, if possible
+
+    If the :meth:`eval` fails, a `str` is returned in stead.
+    """
     try:
         return eval(val)
     except (NameError, SyntaxError):
@@ -84,6 +88,29 @@ def safe_eval(val):
 
 def from_ini(filepath, ifo=None):
     """Configure a new Monitor from an INI file
+
+    Parameters
+    ----------
+    filepath : `str`
+        path to INI-format configuration file
+    ifo : `str`, optional
+        prefix of relevant interferometer. This is only required if
+        '%(ifo)s' interpolation is used in the INI file. The default
+        value is taken from the ``IFO`` environment variable, if found.
+
+    Returns
+    -------
+    monitor : `Monitor`
+        a new monitor of the type given in the INI file
+
+    Raises
+    ------
+    ValueError
+        if the configuration file cannot be read
+
+        OR
+
+        if IFO interpolation is used, but the `ifo` is not given or found
     """
     # get ifo
     ifo = ifo or os.getenv('IFO', None)
