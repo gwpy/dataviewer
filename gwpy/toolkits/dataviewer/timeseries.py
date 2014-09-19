@@ -75,6 +75,7 @@ class TimeSeriesMonitor(DataMonitor):
         for ax in self._fig.axes:
             if ax.get_yscale() == 'log':
                 ax.grid(True, 'minor', 'y')
+        self._fig.add_colorbar(visible=False)
         return self._fig
 
     @property
