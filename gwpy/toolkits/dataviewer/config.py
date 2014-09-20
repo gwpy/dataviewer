@@ -155,7 +155,7 @@ def from_ini(filepath, ifo=None):
             val = safe_eval(val)
             if param not in cparams:
                 cparams[param] = []
-            while len(cparams[param]) < i+1:
+            while len(cparams[param]) < i:
                 cparams[param].append(None)
             cparams[param].append(val)
 
