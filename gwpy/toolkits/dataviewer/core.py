@@ -21,6 +21,7 @@
 
 import abc
 import datetime
+import gc
 
 from gwpy.plotter import rcParams
 
@@ -189,6 +190,7 @@ class Monitor(TimedAnimation):
                 self._fig.set_size_inches(size)
             self.logger.info('Figure saved')
         self.refresh_count += 1
+        gc.collect()
 
     # -------------------------------------------------------------------------
     # Handle display parameters
