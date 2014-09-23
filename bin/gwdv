@@ -28,6 +28,8 @@ for details.
 
 from argparse import ArgumentParser
 
+from matplotlib.pyplot import switch_backend
+
 from gwpy.toolkits.dataviewer import from_ini
 from gwpy.toolkits.dataviewer import version
 
@@ -49,6 +51,9 @@ parser.add_argument('-b', '--back-fill', action='store_true', default=False,
                          'default: %(default)s')
 
 args = parser.parse_args()
+
+if args.non_interactive:
+    switch_backend('agg')
 
 mon = from_ini(args.configuration)
 try:
