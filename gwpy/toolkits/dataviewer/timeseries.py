@@ -104,8 +104,9 @@ class TimeSeriesMonitor(DataMonitor):
             # plot channel data
             for i, channel in enumerate(self.data):
                 ax = next(axes)
-                ax.plot(self.data[channel], label=channel.label,
-                        **dict((key, params[key][i]) for key in params))
+                pparams = dict((key, params[key][i]) for key in params if
+                               params[key][i])
+                ax.plot(self.data[channel], label=channel.label, **pparams)
                 ax.legend()
         # set up all other iterations
         else:
