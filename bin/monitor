@@ -118,7 +118,10 @@ class start(Action):
         configfile = os.path.join(args.config_dir, '%s.ini' % monitor)
         logfile = os.path.join(args.log_dir, '%s.log' % mon)
         pidfile = os.path.join(args.pid_dir, '%s.pid' % mon)
-        cmd = ['nohup', GWDV, configfile]
+        mpldir = os.path.join(args.matplotlib_dir, mon)
+        if not os.path.isdir(mpldir):
+            os.makedirs(mpldir)
+        cmd = ['MPLCONFIGDIR=%s' % mpldir,'nohup', GWDV, configfile]
         if args.non_interactive:
             cmd.append('--non-interactive')
         if args.back_fill:
@@ -238,6 +241,10 @@ shared.add_argument(
 shared.add_argument(
     '-p', '--pid-dir', action='store', type=str, default='%srun' % base,
     help='path of PID directory, default; %(default)s')
+shared.add_argument(
+    '-m', '--matplotlib-dir', action='store', type=str,
+    default='%s.matplotlib' % base,
+    help='path of matplotlib tex cache directory, default %(default)s')
 
 subparsers = parser.add_subparsers(
     dest='action', title='Actions', description='Monitor action:')
