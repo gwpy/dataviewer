@@ -28,7 +28,7 @@ from gwpy.plotter import (SpectrumPlot, SpectrumAxes)
 from gwpy.spectrum.core import Spectrum
 
 from . import version
-from .data.core import OrderedDict
+from .buffer import OrderedDict
 from .core import PARAMS
 from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor

@@ -27,7 +27,7 @@ from astropy.time import Time
 from gwpy.plotter import (SpectrogramPlot, TimeSeriesAxes)
 
 from . import version
-from .data.core import OrderedDict
+from .buffer import OrderedDict
 from .core import PARAMS
 from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor
@@ -37,6 +37,57 @@ __version__ = version.version
 
 __all__ = ['SpectrogramMonitor']
 
+
+# -----------------------------------------------------------------------------
+#
+# Data mixin
+#
+# -----------------------------------------------------------------------------
+
+class SpectrogramBufferMixin(object):
+
+    def fetch(self, channels, start, end, method='welch', stride=1,
+              fftlength=1, overlap=0, filter=None, nproc=1, **kwargs):
+        # get data
+        raw = super(SpectrogramBufferMixin, self).fetch(
+            channels, start, end, **kwargs)
+        # format parameters
+        if not isinstance(stride, dict):
+            stride = dict((c, stride) for c in channels)
+        if not isinstance(fftlength, dict):
+            fftlength = dict((c, fftlength) for c in channels)
+        if not isinstance(overlap, dict):
+            overlap = dict((c, overlap) for c in channels)
+        if not isinstance(filter, dict):
+            filter = dict((c, filter) for c in channels)
+
+        # calculate spectrograms
+        data = TimeSeriesDict
+        for channel, ts in zip(channels, raw.values()):
+            try:
+                specgram = ts.spectrogram(stride[channel], nproc=nproc,
+                                          fftlength=fftlength[channel],
+                                          overlap=overlap[channel])
+            except ZeroDivisionError:
+                if stride[channel] == 0:
+                    raise ZeroDivisionError("Spectrogram stride is 0")
+                elif fftlength[channel] == 0:
+                    raise ZeroDivisionError("FFT length is 0")
+                else:
+                    raise
+            if filter_:
+                specgram = (specgram ** (1/2.)).filter(
+                    *filter_, inplace=True) ** 2
+            data[channel].append(specgram)
+
+        return data
+
+
+# -----------------------------------------------------------------------------
+#
+# Monitor
+#
+# -----------------------------------------------------------------------------
 
 class SpectrogramMonitor(TimeSeriesMonitor):
     """Monitor some spectra

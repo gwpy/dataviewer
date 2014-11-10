@@ -68,12 +68,16 @@ import re
 from math import *
 from ConfigParser import ConfigParser
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
 from gwpy.detector import ChannelList
 from gwpy.spectrum import Spectrum
 
 from . import version
 from .registry import get_monitor
-from .data.core import OrderedDict
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __version__ = version.version
