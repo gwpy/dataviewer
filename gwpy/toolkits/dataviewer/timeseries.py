@@ -54,9 +54,9 @@ class TimeSeriesMonitor(DataMonitor):
                 raise ValueError("Monitor duration must be given after "
                                  "channels, or as a keyword 'duration=xxx' "
                                  "argument")
+        kwargs['duration'] = duration
         # parse references
         super(TimeSeriesMonitor, self).__init__(*channels, **kwargs)
-        self.duration = duration
 
     def init_figure(self):
         self._fig = self.FIGURE_CLASS(**self.params['figure'])

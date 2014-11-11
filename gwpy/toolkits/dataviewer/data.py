@@ -58,7 +58,7 @@ class DataMonitor(Monitor):
         self.sep = kwargs.pop('separate', False)
 
         # separate keyword arguments
-        buffkeys = ['host', 'port', 'connection', 'interval']
+        buffkeys = ['host', 'port', 'connection', 'interval', 'duration']
         buffargs = {}
         for key in buffkeys:
             if key in kwargs:
