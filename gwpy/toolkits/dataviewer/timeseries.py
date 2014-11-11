@@ -45,17 +45,18 @@ class TimeSeriesMonitor(DataMonitor):
 
     def __init__(self, *channels, **kwargs):
         try:
-            self.duration = kwargs.pop('duration')
+            duration = kwargs.pop('duration')
         except KeyError:
             try:
                 channels = list(channels)
-                self.duration = float(channels.pop(-1))
+                duration = float(channels.pop(-1))
             except ValueError:
                 raise ValueError("Monitor duration must be given after "
                                  "channels, or as a keyword 'duration=xxx' "
                                  "argument")
         # parse references
         super(TimeSeriesMonitor, self).__init__(*channels, **kwargs)
+        self.duration = duration
 
     def init_figure(self):
         self._fig = self.FIGURE_CLASS(**self.params['figure'])
@@ -80,19 +81,17 @@ class TimeSeriesMonitor(DataMonitor):
 
     @property
     def data(self):
-        try:
-            return self._data
-        except AttributeError:
-            self._data = TimeSeriesDict()
-            return self._data
+        return self.buffer.data
+
+    @property
+    def duration(self):
+        return self.buffer.duration
+
+    @duration.setter
+    def duration(self, d):
+        self.buffer.duration = d
 
     def update_data(self, new, gap='pad', pad=nan):
-        if not self.data:
-            self.data.append(new)
-        elif abs(self.data[self.channels[0]].span) < self.duration:
-            self.data.append(new, resize=True, gap=gap, pad=pad)
-        else:
-            self.data.append(new, resize=False, gap=gap, pad=pad)
         self.epoch = self.data[self.channels[0]].span[-1]
 
     def refresh(self):
