@@ -114,8 +114,10 @@ class TimeSeriesMonitor(DataMonitor):
             for line, channel in zip(lines, self.channels):
                 line.set_xdata(self.data[channel].times.data)
                 line.set_ydata(self.data[channel].data)
-        for ax in self._fig.get_axes(self.AXES_CLASS.name):
-            ax.autoscale_view(scalex=False)
+        if 'ylim' not in self.params['refresh']:
+            for ax in self._fig.get_axes(self.AXES_CLASS.name):
+                ax.relim()
+                ax.autoscale_view(scalex=False)
         self.logger.info('Figure data updated')
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             if float(self.epoch) > (self.gpsstart + self.duration):
