@@ -58,18 +58,17 @@ class DataMonitor(Monitor):
         self.sep = kwargs.pop('separate', False)
 
         # separate keyword arguments
-        monkeys = ['fig', 'interval', 'blit', 'repeat', 'logger', 'figname',
-                   'save_every', 'tight_bbox', 'pause', 'clock']
-        monargs = dict()
-        for key in monargs:
+        buffkeys = ['host', 'port', 'connection', 'interval']
+        buffargs = {}
+        for key in buffkeys:
             if key in kwargs:
-                monargs[key] = kwargs.pop(key)
+                buffargs[key] = kwargs.pop(key)
 
         # set up buffer
-        self.buffer = DataIterator(channels, **kwargs)
+        self.buffer = DataIterator(channels, **buffargs)
 
         # set up monitor and go
-        super(DataMonitor, self).__init__(**monargs)
+        super(DataMonitor, self).__init__(**kwargs)
 
     @property
     def channels(self):
