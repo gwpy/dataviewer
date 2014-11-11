@@ -107,30 +107,31 @@ class BufferCore(object):
         elif isinstance(segments, DataQualityFlag):
             segments = segments.active
         # otherwise, check the data we have
-        available = reduce(
-            operator.and_, (self.data[c].segments for c in self.channels))
-        new = segments - available
+        if self.data:
+            available = reduce(
+                operator.and_, (self.data[c].segments for c in self.channels))
+            new = segments - available
+        else:
+            new = segments
 
         # -- get new data -----------------------
         if fetch and abs(new):
             for seg in new:
                 data = self.fetch(self.channels, seg[0], seg[1], **fetchargs)
                 self.append(data)
-                self.coalesce()
 
         # -- return the requested data ----------
         out = type(self.data)()
         for channel in self.channels:
-            data = self.SeriesClass()
-            for ts in self.data[channel]:
-                for seg in segments:
-                    if abs(seg) < ts.dt.value:
-                        continue
-                    if ts.span.intersects(seg):
-                        cropped = ts.crop(float(seg[0]), float(seg[1]),
-                                          copy=False)
-                        if cropped.size:
-                            data.append(cropped)
+            data = self.ListClass()
+            for seg in segments:
+                if abs(seg) < self.data[channel].dt.value:
+                    continue
+                if self.data[channel].span.intersects(seg):
+                    cropped = self.data[channel].crop(
+                        float(seg[0]), float(seg[1]), copy=False)
+                    if cropped.size:
+                        data.append(cropped)
             out[channel] = data.coalesce()
         if isinstance(channel, str) and len(channels) == 1:
             return out[channels[0]]
