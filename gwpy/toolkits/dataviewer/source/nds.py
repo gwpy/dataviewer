@@ -45,7 +45,7 @@ class NDSDataSource(object):
         if not self.connection:
             self.connect(connection=connection, host=host, port=port)
 
-    def connect(self, connection=None, host=None, port=None):
+    def connect(self, connection=None, host=None, port=None, force=False):
         """Connect to an NDS server
 
         If a connection is given, it is simply attached, otherwise a new
@@ -59,13 +59,15 @@ class NDSDataSource(object):
             the name of the NDS server host to connect
         port : `int`, optional
             the port number for the NDS server connection
+        force : `bool`, optional
+            force a new connection even if one is already open
 
         Returns
         -------
         connection : `nds2.connection`
             the attached connection
         """
-        if self.connection and (connection or host):
+        if force or (self.connection and (connection or host)):
             del self.connection
             self.logger.info('Closed existing connection')
 
@@ -117,8 +119,8 @@ class NDSDataSource(object):
             new data
         """
         self.logger.info('Fetching data for [%s, %s)' % (start, end))
-        return self.RawDictClass.fetch(channels, start, end,
-                                  connection=self.connection, **kwargs)
+        kwargs.setdefault('connection', self.connection)
+        return self.RawDictClass.fetch(channels, start, end, **kwargs)
 
 register_data_source(NDSDataSource)
 register_data_source(NDSDataSource, 'nds')
@@ -135,7 +137,7 @@ class NDSDataIterator(NDSDataSource):
     """
     def __init__(self, channels, duration=0, interval=1, host=None,
                  port=None, connection=None, logger=Logger('nds'),
-                 gap='warn', pad=0.0, **kwargs):
+                 gap='pad', pad=0.0, **kwargs):
         """Construct a new iterator
         """
         super(NDSDataIterator, self).__init__(channels, host=host, port=port,
@@ -150,10 +152,22 @@ class NDSDataIterator(NDSDataSource):
         self.stride = stride
         self.gap = gap
         self.pad = pad
-        # generate iterator
+
+        self.start()
+
+    def __iter__(self):
+        return self
+
+    def start(self):
         self.iterator = self.connection.iterate(
-            stride, [c.ndsname for c in self.channels])
+            self.stride, [c.ndsname for c in self.channels])
         self.logger.debug('NDSDataIterator ready')
+        return self.iterator
+
+    def restart(self):
+        del self.iterator
+        self.connect(force=True)
+        return self.start()
 
     def next(self):
         """Get the next data iteration
@@ -170,7 +184,12 @@ class NDSDataIterator(NDSDataSource):
         span = 0
         epoch = 0
         while span < self.interval:
-            buffers = next(self.iterator)
+            try:
+                buffers = next(self.iterator)
+            except RuntimeError as e:
+                self.logger.warning('RuntimeError caught: %s' % str(e))
+                self.restart()
+                break
             for buff, c in zip(buffers, self.channels):
                 ts = TimeSeries.from_nds2_buffer(buff)
                 try:
@@ -183,12 +202,22 @@ class NDSDataIterator(NDSDataSource):
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
         if not len(self.segments) or abs(self.extent) < self.duration:
-            self.append(new, resize=True)
+            self.append(new, resize=True, gap=self.gap, pad=self.pad)
         else:
-            self.append(new, resize=False)
+            self.append(new, resize=False, gap=self.gap, pad=self.pad)
         self.logger.debug('%d seconds of data received with epoch %s'
                          % (span, epoch))
         return self.data
+
+    def fetch(self, *args, **kwargs):
+        try:
+            return super(NDSDataIterator, self).fetch(*args, **kwargs)
+        except RuntimeError as e:
+            if 'Another transfer' in str(e):
+                connection = self.connect(force=True)
+                return super(NDSDataIterator, self).fetch(*args, **kwargs)
+            else:
+                raise
 
 register_data_iterator(NDSDataIterator)
 register_data_iterator(NDSDataIterator, 'nds')
