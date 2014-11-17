@@ -58,7 +58,7 @@ class DataMonitor(Monitor):
         self.sep = kwargs.pop('separate', False)
 
         # separate keyword arguments
-        buffkeys = ['host', 'port', 'connection', 'interval', 'duration']
+        buffkeys = ['host', 'port', 'connection', 'interval', 'duration', 'pad']
         buffargs = {}
         for key in buffkeys:
             if key in kwargs:
@@ -77,6 +77,18 @@ class DataMonitor(Monitor):
     def add_channels(self, *channels, **fetchargs):
         return self.buffer.add_channels(*channels, **fetchargs)
     add_channels.__doc__ = DataIterator.add_channels.__doc__
+
+    # ------------------------------------------
+    # Get old data
+
+    def backfill(self):
+        """Retrieve old data to populate the display
+        """
+        start = self.epoch - self.duration
+        end = self.epoch - self.buffer.interval
+        self.buffer.get((start, end), fetch=True, pad=self.buffer.pad)
+        self.gpsstart = start
+        self.logger.info('Backfill complete')
 
     # ------------------------------------------
     # Update data

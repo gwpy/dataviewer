@@ -55,6 +55,7 @@ class TimeSeriesMonitor(DataMonitor):
                                  "channels, or as a keyword 'duration=xxx' "
                                  "argument")
         kwargs['duration'] = duration
+        kwargs.setdefault('pad', nan)
         # parse references
         super(TimeSeriesMonitor, self).__init__(*channels, **kwargs)
 
