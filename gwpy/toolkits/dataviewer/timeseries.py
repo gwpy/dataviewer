@@ -93,7 +93,7 @@ class TimeSeriesMonitor(DataMonitor):
         self.buffer.duration = d
 
     def update_data(self, new, gap='pad', pad=nan):
-        self.epoch = self.data[self.channels[0]].span[-1]
+        self.epoch = new[self.channels[0]].span[-1]
 
     def refresh(self):
         # set up first iteration
