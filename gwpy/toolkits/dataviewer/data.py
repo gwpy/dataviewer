@@ -104,7 +104,7 @@ class DataMonitor(Monitor):
 
         This is just a call to the :meth:`DataSource.iterate` method
         """
-        return self.buffer
+        return iter(self.buffer)
 
     @abc.abstractproperty
     def data(self):
