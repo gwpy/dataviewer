@@ -68,6 +68,9 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.combinations = OrderedDict()
         self.add_combination(kwargs.pop('combination', None), channels)
 
+        # parse filters
+        filters = kwargs.pop('filters', kwargs.pop('filter', []))
+
         # init monitor
         kwargs['duration'] = ((self.fftlength - self.overlap) * self.averages +
                               self.overlap)
@@ -312,21 +315,23 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
     def update_data(self, new, gap='pad', pad=0):
         # record new data
-        super(SpectrumMonitor, self).update_data(new, gap=gap, pad=pad)
-        epoch = new[self.channels[0]].span[-1]
+        self.epoch = new[self.channels[0]].span[-1]
         # recalculate ASDs
         datadur = abs(self.data[self.channels[0]].span)
+        fftlength = self.fftlength
+        overlap = self.overlap
         if ((self.asdkwargs.get('method', None) in ['median-mean'] and
-             datadur < (self.fftlength * 2- self.overlap)) or
+             datadur < (self.fftlength * 2 - self.overlap)) or
             datadur < self.fftlength):
-            return
+            fftlength = datadur
+            overlap = fftlength * float(self.overlap / self.fftlength)
         for channel in self.data:
             self.spectra[channel] = self.data[channel].asd(
-                self.fftlength, self.overlap, **self.asdkwargs)
+                fftlength, overlap, **self.asdkwargs)
             if channel.filter:
                 self.spectra[channel] = self.spectra[channel].filter(
                     *channel.filter)
-        self.logger.debug('Data recorded with epoch: %s' % epoch)
+        self.logger.debug('Data recorded with epoch: %s' % self.epoch)
 
     def refresh(self):
         # set up first iteration
