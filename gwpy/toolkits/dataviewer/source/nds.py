@@ -206,7 +206,7 @@ class NDSDataIterator(NDSDataSource):
         else:
             self.append(new, resize=False, gap=self.gap, pad=self.pad)
         self.logger.debug('%d seconds of data received with epoch %s'
-                         % (span, epoch))
+                          % (span, epoch))
         return self.data
 
     def fetch(self, *args, **kwargs):
@@ -214,7 +214,7 @@ class NDSDataIterator(NDSDataSource):
             return super(NDSDataIterator, self).fetch(*args, **kwargs)
         except RuntimeError as e:
             if 'Another transfer' in str(e):
-                connection = self.connect(force=True)
+                self.connect(force=True)
                 return super(NDSDataIterator, self).fetch(*args, **kwargs)
             else:
                 raise
