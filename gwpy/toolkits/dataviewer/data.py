@@ -66,6 +66,12 @@ class DataMonitor(Monitor):
 
         # set up buffer
         self.buffer = DataIterator(channels, **buffargs)
+        labels = kwargs.pop('labels', kwargs.pop('label', []))
+        for i, channel in enumerate(self.buffer.channels):
+            try:
+                channel.label = labels[i]
+            except IndexError:
+                channel.label = None
 
         # set up monitor and go
         super(DataMonitor, self).__init__(**kwargs)
