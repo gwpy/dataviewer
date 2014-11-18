@@ -144,10 +144,10 @@ class BufferCore(object):
         for key, data in self.data.iteritems():
             self.data[key] = data.coalesce()
 
-    def append(self, new, **kwargs):
+    def append(self, new, inplace=True, **kwargs):
         """Append data to this `DataBuffer`
         """
-        self.data.append(new, **kwargs)
+        return self.data.append(new, inplace=inplace, **kwargs)
 
     def fetch(self, segments, **kwargs):
         raise NotImplementedError(
