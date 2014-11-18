@@ -133,8 +133,8 @@ class BufferCore(object):
                     if cropped.size:
                         data.append(cropped)
             out[channel] = data.coalesce()
-        if isinstance(channel, str) and len(channels) == 1:
-            return out[channels[0]]
+        if isinstance(channel, str) and len(self.channels) == 1:
+            return out[self.channels[0]]
         else:
             return out
 
