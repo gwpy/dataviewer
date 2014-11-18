@@ -19,6 +19,8 @@
 """DataMonitor for ASDs
 """
 
+from __future__ import division
+
 import re
 from itertools import cycle
 
@@ -51,22 +53,21 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.fftlength = kwargs.pop('fftlength', 1)
         self.overlap = kwargs.pop('overlap', 0)
         self.averages = kwargs.pop('averages', 10)
-        self.asdkwargs = {}
-        for param in ['window', 'method']:
-            try:
-                self.asdkwargs[param] = kwargs.pop(param)
-            except KeyError:
-                pass
+        self.asdkwargs = {'method': kwargs.pop('method', 'welch')}
+        if 'window' in kwargs:
+            self.asdkwargs['window'] = kwargs.pop('window')
 
         self.spectra = OrderedDict()
         self._flims = None
 
         # add references
         self._references = OrderedDict()
-        self.add_reference(kwargs.pop('reference', None))
+        if 'reference' in kwargs:
+            self.add_reference(kwargs.pop('reference'))
         # add combinations
         self.combinations = OrderedDict()
-        self.add_combination(kwargs.pop('combination', None), channels)
+        if 'combination' in kwargs:
+             self.add_combination(kwargs.pop('combination'), channels)
 
         # parse filters
         filters = kwargs.pop('filters', kwargs.pop('filter', []))
@@ -80,7 +81,14 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         super(SpectrumMonitor, self).__init__(*channels, **kwargs)
 
-    def add_reference(self, refs):
+        # add filters
+        for i, channel in enumerate(self.buffer.channels):
+            try:
+                channel.filter = filters[i]
+            except IndexError:
+                channel.filter = None
+
+    def add_reference(self, ref, **refparams):
         """
         Adds static reference spectra to the plot.
 
@@ -98,55 +106,16 @@ class SpectrumMonitor(TimeSeriesMonitor):
             - `list`: each element can be a `Spectrum` or a tuple following the
             format outlined above.
         """
-
-        if refs is None:
-            # no references provided
-            pass
-
-        elif isinstance(refs, Spectrum):
-            self._references[refs] = {'label': refs.name or 'Reference'}
-
-        elif isinstance(refs, dict):
-            if all([isinstance(r, Spectrum) for r in refs.keys()]):
-                # settings provided
-                for r, params in refs.iteritems():
-                    label = r.name or 'Reference'
-                    self._references[r] = parseparams(label, params)
-            elif all([isinstance(r, basestring) for r in refs.keys()]):
-                # only label provided (as key)
-                for rname, r in refs.iteritems():
-                    self._references[r] = {'label': rname}
-            else:
-                raise ValueError('Invalid reference syntax.')
-
-        elif isinstance(refs, tuple) and len(refs) == 2:
-            if isinstance(refs[0], Spectrum):
-                # settings provided
-                label = refs[0].name or 'Reference'
-                self._references[refs[0]] = parseparams(label, refs[1])
-            elif isinstance(refs[0], basestring) & \
-                    isinstance(refs[1], Spectrum):
-                # only label provided (as first element)
-                self._references[refs[1]] = {'label': refs[0]}
-            else:
-                raise ValueError('Invalid reference syntax.')
-
-        elif isinstance(refs, (list, tuple)):
+        if isinstance(ref, Spectrum):
+            refparams.setdefault('label', ref.name or 'Reference')
+            self._references[ref] = refparams
+        elif isinstance(ref, dict):
+            for key, val in ref.iteritems():
+                self.add_reference(key, **val)
+        elif isinstance(ref, (list, tuple)):
             # list of references provided
-            for r in refs:
-                if isinstance(r, Spectrum):
-                    # single spectrum
-                    self._references[r] = {'label': r.name or 'Reference'}
-                elif isinstance(r, tuple) and len(r) == 2:
-                    if isinstance(r[0], Spectrum):
-                        label = r[0].name or 'Reference'
-                        self._references[r[0]] = parseparams(label, r[1])
-                    elif isinstance(r[0], basestring):
-                        self._references[r[1]] = {'label': refs[0]}
-                    else:
-                        raise ValueError('Invalid reference syntax.')
-                else:
-                    raise ValueError('Invalid reference syntax.')
+            for r in ref:
+                self.add_reference(r)
         else:
             raise ValueError('Invalid reference syntax.')
 
@@ -317,16 +286,25 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # record new data
         self.epoch = new[self.channels[0]].span[-1]
         # recalculate ASDs
-        datadur = abs(self.data[self.channels[0]].span)
+        method = self.asdkwargs.get('method')
+        datadur = abs(new[self.channels[0]].span)
         fftlength = self.fftlength
         overlap = self.overlap
-        if ((self.asdkwargs.get('method', None) in ['median-mean'] and
+        if ((method in ['median-mean'] and
              datadur < (self.fftlength * 2 - self.overlap)) or
             datadur < self.fftlength):
             fftlength = datadur
-            overlap = fftlength * float(self.overlap / self.fftlength)
-        for channel in self.data:
-            self.spectra[channel] = self.data[channel].asd(
+            overlap = fftlength * self.overlap / self.fftlength
+            self.logger.warn("Not enough data for full ASD, shortening to\n"
+                             "    fftlength = %.2f [given %.2f],\n"
+                             "      overlap = %.2f [given %.2f]"
+                             % (fftlength, self.fftlength,
+                                overlap, self.overlap))
+        for channel in new:
+            n = asd_length(new[channel].size, method,
+                           fftlength * new[channel].sample_rate.value,
+                           overlap * new[channel].sample_rate.value)
+            self.spectra[channel] = new[channel][-n:].asd(
                 fftlength, overlap, **self.asdkwargs)
             if channel.filter:
                 self.spectra[channel] = self.spectra[channel].filter(
@@ -429,3 +407,20 @@ class CombinationError(Exception):
     # this custom exception was created specifically to avoid the error caused
     # by different df's in combinations being caught at the moment of plotting
     pass
+
+
+def asd_length(size, method, fftlength, overlap):
+    """Calculate the correct `TimeSeries` length as input to the ASD method
+    """
+    numsegs = 1 + int((size - fftlength) / (fftlength - overlap))
+    # Bartlett doesn't user overlapping segments
+    if method.lower() == 'bartlett':
+        return size//fftlength * fftlength
+    # median-mean requires an even number of segments
+    if method.lower() in ['median-mean'] and numsegs % 2:
+        numsegs -= 1
+    # otherwise just round down to an integer number of segments
+    if method.lower() in ['welch', 'median', 'mean', 'median-mean']:
+        return int((numsegs - 1) * (fftlength - overlap) + fftlength)
+    # panic and return the input
+    return size
