@@ -29,6 +29,7 @@ for details.
 from argparse import ArgumentParser
 
 from matplotlib.pyplot import switch_backend
+from matplotlib import rcParams
 
 from gwpy.toolkits.dataviewer import from_ini
 from gwpy.toolkits.dataviewer import version
@@ -49,11 +50,15 @@ parser.add_argument('-n', '--non-interactive', action='store_true',
 parser.add_argument('-b', '--back-fill', action='store_true', default=False,
                     help='Fetch old data to back-fill the plot, '
                          'default: %(default)s')
+parser.add_argument('-t', '--no-latex', action='store_true', default=False,
+                    help="Don't use latex to render text, default: %(default)s")
 
 args = parser.parse_args()
 
 if args.non_interactive:
     switch_backend('agg')
+if args.no_latex:
+    rcParams['text.usetex'] = False
 
 mon = from_ini(args.configuration)
 try:
