@@ -193,14 +193,14 @@ def from_ini(filepath, ifo=None):
             refdir = reference[4:]
             for f in os.listdir(refdir):
                 if os.path.splitext(f)[1] in ['.txt', '.dat', '.gz']:
-                    refspec = Spectrum.read(refdir + f, format='dat')
+                    refspec = Spectrum.read(refdir + f)
                     refspec.name = f.split('.')[0].replace('_', r' ')
                     rparams[refspec] = rparamsi
         else:
             # get rerference section
             _params = cp.items(reference)
             refpath = reference[4:]
-            refform = 'dat'
+            refform = 'txt'
             deflabel = os.path.basename(refpath).split('.')[0]
             rparamsi = OrderedDict([('label', deflabel)])
             for param, val in _params:
