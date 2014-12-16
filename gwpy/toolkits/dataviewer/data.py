@@ -59,7 +59,7 @@ class DataMonitor(Monitor):
 
         # separate keyword arguments
         buffkeys = ['host', 'port', 'connection', 'interval', 'duration', 'pad']
-        buffargs = {}
+        buffargs = {'logger': kwargs.get('logger')}
         for key in buffkeys:
             if key in kwargs:
                 buffargs[key] = kwargs.pop(key)
