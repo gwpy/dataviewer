@@ -234,7 +234,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             fmin = self._comb_flims[0]
             fmax = self._comb_flims[1]
             for i, spec in cha_spec.iteritems():
-                f = spec.frequencies
+                f = spec.frequencies.data
                 cha_spec[i] = spec[(fmin < f) & (f < fmax)]
             for i, spec in ref_spec.iteritems():
                 f = spec.frequencies
