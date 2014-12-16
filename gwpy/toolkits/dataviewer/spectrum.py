@@ -24,9 +24,11 @@ from __future__ import division
 import re
 from itertools import cycle
 
+import numpy
+
 from astropy.time import Time
 
-from gwpy.plotter import (SpectrumPlot, SpectrumAxes)
+from gwpy.plotter import (SpectrumPlot, SpectrumAxes, rcParams)
 from gwpy.spectrum.core import Spectrum
 
 from . import version
@@ -40,6 +42,8 @@ __version__ = version.version
 
 __all__ = ['SpectrumMonitor']
 
+SPECTRA = {}
+
 
 class SpectrumMonitor(TimeSeriesMonitor):
     """Monitor some spectra
@@ -49,16 +53,31 @@ class SpectrumMonitor(TimeSeriesMonitor):
     AXES_CLASS = SpectrumAxes
 
     def __init__(self, *channels, **kwargs):
+        kwargs.setdefault('pad', 0.0)
+
         # get FFT parameters
         self.fftlength = kwargs.pop('fftlength', 1)
         self.overlap = kwargs.pop('overlap', 0)
         self.averages = kwargs.pop('averages', 10)
-        self.asdkwargs = {'method': kwargs.pop('method', 'welch')}
+        self.method = kwargs.pop('method', 'welch')
         if 'window' in kwargs:
-            self.asdkwargs['window'] = kwargs.pop('window')
+            self.window = {'window': kwargs.pop('window')}
+        else:
+            self.window = {}
+        weight = kwargs.pop('weight', 'linear')
+        if weight.startswith('exp') and self.method == 'median-mean':
+            raise ValueError("Median-mean average PSD method is incompatible "
+                             "with a non-linear weighting")
+        elif weight.startswith('exp'):
+            self.weights = numpy.exp((numpy.arange(self.averages) *
+                                      numpy.log(0.5))[::-1])
+        else:
+            self.weights = numpy.ones(self.averages)
+        self.weights /= self.weights.sum()
 
         self.spectra = OrderedDict()
         self._flims = None
+
 
         # add references
         self._references = OrderedDict()
@@ -285,31 +304,61 @@ class SpectrumMonitor(TimeSeriesMonitor):
     def update_data(self, new, gap='pad', pad=0):
         # record new data
         self.epoch = new[self.channels[0]].span[-1]
-        # recalculate ASDs
-        method = self.asdkwargs.get('method')
+        # get params
         datadur = abs(new[self.channels[0]].span)
-        fftlength = self.fftlength
-        overlap = self.overlap
-        if ((method in ['median-mean'] and
-             datadur < (self.fftlength * 2 - self.overlap)) or
-            datadur < self.fftlength):
-            fftlength = datadur
-            overlap = fftlength * self.overlap / self.fftlength
-            self.logger.warn("Not enough data for full ASD, shortening to\n"
-                             "    fftlength = %.2f [given %.2f],\n"
-                             "      overlap = %.2f [given %.2f]"
-                             % (fftlength, self.fftlength,
-                                overlap, self.overlap))
+        if (self.method in ['median-mean', 'median'] or
+                self.method.startswith('lal-')):
+            method = 'lal-welch'
+        else:
+            method = 'welch'
+
+        # stop early
+        if datadur < self.fftlength:
+            self.logger.debug('Not enough data for single FFT')
+            return
+        # calculate ASDs
         for channel in new:
-            n = asd_length(new[channel].size, method,
-                           fftlength * new[channel].sample_rate.value,
-                           overlap * new[channel].sample_rate.value)
-            self.spectra[channel] = new[channel][-n:].asd(
-                fftlength, overlap, **self.asdkwargs)
+            try:
+                fftepoch = SPECTRA[channel][-1].epoch.gps + (
+                               self.fftlength - self.overlap)
+            except (KeyError, IndexError):
+                SPECTRA[channel] = []
+                fftepoch = new[channel].epoch.gps
+            data = new[channel].crop(start=fftepoch)
+            count = 0
+            # calculate new FFTs
+            while fftepoch + self.fftlength <= data.span[-1]:
+                fdata = new[channel].crop(fftepoch, fftepoch + self.fftlength)
+                fft = fdata.asd(self.fftlength, self.overlap, method=method,
+                                **self.window)
+                self.logger.debug('%ds ASD calculated for %s'
+                                  % (self.fftlength, str(channel)))
+                SPECTRA[channel] = (SPECTRA[channel] + [fft])[-self.averages:]
+                fftepoch += self.fftlength - self.overlap
+                count += 1
+            if count == 0:
+                return
+            # calculated new average
+            if self.method == 'median-mean' and len(SPECTRA[channel]) == 1:
+                spec = SPECTRA[channel][0].data
+            elif self.method == 'median-mean':
+                odd = numpy.median(SPECTRA[channel][::2], axis=0)
+                even = numpy.median(SPECTRA[channel][1::2], axis=0)
+                spec = numpy.mean((odd, even), axis=0)
+            else:
+                weights = self.weights[-len(SPECTRA[channel]):]
+                weights /= weights.sum()
+                spec = numpy.sum([s*w for (s, w) in
+                                  zip(SPECTRA[channel], weights)], axis=0)
+            self.spectra[channel] = Spectrum(spec)
+            self.spectra[channel].metadata = (
+                SPECTRA[channel][0].metadata.copy())
             if channel.filter:
                 self.spectra[channel] = self.spectra[channel].filter(
                     *channel.filter)
-        self.logger.debug('Data recorded with epoch: %s' % self.epoch)
+            self.logger.debug('%s ASD recalculated for %s'
+                              % (self.method, str(channel)))
+        self.logger.info('Data recorded with epoch: %s' % self.epoch)
 
     def refresh(self):
         # set up first iteration
