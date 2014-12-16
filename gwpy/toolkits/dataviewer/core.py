@@ -58,6 +58,7 @@ FIGURE_PARAMS = ['title', 'subtitle']
 AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel']
 
 
+
 class Monitor(TimedAnimation):
     __metaclass__ = abc.ABCMeta
     type = None
@@ -70,6 +71,7 @@ class Monitor(TimedAnimation):
     def __init__(self, fig=None, interval=1, blit=True, repeat=False,
                  logger=Logger('monitor'), figname=None, save_every=1,
                  tight_bbox=False, pause=False, clock=False, **kwargs):
+        self.logger = logger
         # record timing
         self.gpsstart = tconvert('now')
         self._clock = clock
@@ -80,6 +82,7 @@ class Monitor(TimedAnimation):
         if fig is None:
             fig = self.init_figure()
         # generate monitor
+        self.interval = interval
         super(Monitor, self).__init__(fig, interval=int(interval * 1000),
                                       blit=blit, repeat=repeat, **kwargs)
 
@@ -90,7 +93,6 @@ class Monitor(TimedAnimation):
         if save_every * interval < 10 and figname:
             self.logger.warning('Saving too often!')
 
-        self.logger = logger
 
         self.legend = None
         self.suptitle = None

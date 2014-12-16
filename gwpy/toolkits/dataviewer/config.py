@@ -63,16 +63,26 @@ detector network. `color` can also be specified as a list under [plot].
 """
 
 import os
+import re
+
 from math import *
 from ConfigParser import ConfigParser
 
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
+from gwpy.detector import ChannelList
+from gwpy.spectrum import Spectrum
+
 from . import version
 from .registry import get_monitor
-from gwpy.spectrum.core import Spectrum
-from .data.core import OrderedDict
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __version__ = version.version
+
+re_quote = re.compile(r'^[\s\"\']+|[\s\"\']+$')
 
 
 def safe_eval(val):
@@ -125,6 +135,9 @@ def from_ini(filepath, ifo=None):
     # get basic params
     basics = dict(cp.items('monitor', raw=True))
     type_ = basics.pop('type')
+    channels = map(str, ChannelList.from_names(basics.pop('channels', '')))
+    references = basics.pop('references', None)
+    combinations = basics.pop('combinations', None)
     basics = dict((key, safe_eval(val)) for (key, val) in basics.iteritems())
     # get type
     monitor = get_monitor(type_)
@@ -133,12 +146,15 @@ def from_ini(filepath, ifo=None):
 
     # get channel and reference curve names
     sections = cp.sections()
-    channels = [c for c in sections if c not in ['monitor', 'plot']
-                if c[:4] not in ['ref:', 'com:']]
-    references = [c for c in sections if c not in ['monitor', 'plot']
-                  if c[:4] == 'ref:']
-    combinations = [c for c in sections if c not in ['monitor', 'plot']
-                    if c[:4] == 'com:']
+    if not channels:
+        channels = [c for c in sections if c not in ['monitor', 'plot']
+                    if c[:4] not in ['ref:', 'com:']]
+    if references is None:
+        references = [c for c in sections if c not in ['monitor', 'plot']
+                      if c[:4] == 'ref:']
+    if combinations is None:
+        combinations = [c for c in sections if c not in ['monitor', 'plot']
+                        if c[:4] == 'com:']
 
     # get channel parameters
     cparams = {}

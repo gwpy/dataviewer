@@ -45,15 +45,17 @@ class TimeSeriesMonitor(DataMonitor):
 
     def __init__(self, *channels, **kwargs):
         try:
-            self.duration = kwargs.pop('duration')
+            duration = kwargs.pop('duration')
         except KeyError:
             try:
                 channels = list(channels)
-                self.duration = float(channels.pop(-1))
+                duration = float(channels.pop(-1))
             except ValueError:
                 raise ValueError("Monitor duration must be given after "
                                  "channels, or as a keyword 'duration=xxx' "
                                  "argument")
+        kwargs['duration'] = duration
+        kwargs.setdefault('pad', nan)
         # parse references
         super(TimeSeriesMonitor, self).__init__(*channels, **kwargs)
 
@@ -80,20 +82,18 @@ class TimeSeriesMonitor(DataMonitor):
 
     @property
     def data(self):
-        try:
-            return self._data
-        except AttributeError:
-            self._data = TimeSeriesDict()
-            return self._data
+        return self.buffer.data
+
+    @property
+    def duration(self):
+        return self.buffer.duration
+
+    @duration.setter
+    def duration(self, d):
+        self.buffer.duration = d
 
     def update_data(self, new, gap='pad', pad=nan):
-        if not self.data:
-            self.data.append(new)
-        elif abs(self.data[self.channels[0]].span) < self.duration:
-            self.data.append(new, resize=True, gap=gap, pad=pad)
-        else:
-            self.data.append(new, resize=False, gap=gap, pad=pad)
-        self.epoch = self.data[self.channels[0]].span[-1]
+        self.epoch = new[self.channels[0]].span[-1]
 
     def refresh(self):
         # set up first iteration
@@ -104,17 +104,21 @@ class TimeSeriesMonitor(DataMonitor):
             # plot channel data
             for i, channel in enumerate(self.data):
                 ax = next(axes)
+                label = (hasattr(channel, 'label') and channel.label or
+                         channel.texname)
                 pparams = dict((key, params[key][i]) for key in params if
                                params[key][i])
-                ax.plot(self.data[channel], label=channel.label, **pparams)
+                ax.plot(self.data[channel], label=label, **pparams)
                 ax.legend()
         # set up all other iterations
         else:
             for line, channel in zip(lines, self.channels):
                 line.set_xdata(self.data[channel].times.data)
                 line.set_ydata(self.data[channel].data)
-        for ax in self._fig.get_axes(self.AXES_CLASS.name):
-            ax.autoscale_view(scalex=False)
+        if 'ylim' not in self.params['refresh']:
+            for ax in self._fig.get_axes(self.AXES_CLASS.name):
+                ax.relim()
+                ax.autoscale_view(scalex=False)
         self.logger.info('Figure data updated')
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
             if float(self.epoch) > (self.gpsstart + self.duration):

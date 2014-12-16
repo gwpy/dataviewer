@@ -33,10 +33,10 @@ import nds2
 from gwpy.detector import (Channel, ChannelList)
 from gwpy.time import tconvert
 
-from .. import version
-from ..core import Monitor
-from ..log import Logger
-from .source import DataSourceMeta
+from . import version
+from .core import Monitor
+from .log import Logger
+from .buffer import DataIterator
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __version__ = version.version
@@ -51,61 +51,60 @@ NDS2_FRAME_TYPE = defaultdict(lambda: 'C', [
 class DataMonitor(Monitor):
     """Low-level GW data monitor
     """
-    __metaclass__ = DataSourceMeta
-    MAX_CHANNELS = None
 
     def __init__(self, *channels, **kwargs):
-        self.logger = kwargs.pop('logger', Logger('monitor'))
+        kwargs.setdefault('logger', Logger('monitor'))
         self.epoch = tconvert('now')
         self.sep = kwargs.pop('separate', False)
 
-        labels = kwargs.pop('label', [None] * len(channels))
-        filters = kwargs.pop('filter', [None] * len(channels))
-        frametypes = kwargs.pop('frametype', [None] * len(channels))
+        # separate keyword arguments
+        buffkeys = ['host', 'port', 'connection', 'interval', 'duration', 'pad']
+        buffargs = {'logger': kwargs.get('logger')}
+        for key in buffkeys:
+            if key in kwargs:
+                buffargs[key] = kwargs.pop(key)
 
-        # setup channels
-        self._channels = OrderedDict()
-        while len(labels) < len(channels):
-            labels.append(None)
-        while len(filters) < len(channels):
-            filters.append(None)
-        for c, label, filter, frametype in zip(
-                channels, labels, filters, frametypes):
-            if isinstance(c, (list, tuple)):
-                self.add_channel(*c, label=label, filter=filter,
-                                 frametype=frametype)
-            else:
-                self.add_channel(c, label=label, filter=filter,
-                                 frametype=frametype)
+        # set up buffer
+        self.buffer = DataIterator(channels, **buffargs)
+        labels = kwargs.pop('labels', kwargs.pop('label', []))
+        for i, channel in enumerate(self.buffer.channels):
+            try:
+                channel.label = labels[i]
+            except IndexError:
+                channel.label = None
 
-        # connect to data source
-        self.connection = self.connect()
-
-        # go
+        # set up monitor and go
         super(DataMonitor, self).__init__(**kwargs)
 
-    # Channel information
     @property
     def channels(self):
-        return ChannelList(self._channels.keys())
+        return self.buffer.channels
 
-    @property
-    def frametypes(self):
-        return set(self._channels.values())
+    def add_channels(self, *channels, **fetchargs):
+        return self.buffer.add_channels(*channels, **fetchargs)
+    add_channels.__doc__ = DataIterator.add_channels.__doc__
 
-    def add_channel(self, channel, frametype=None, label=None, filter=None):
-        if len(self.channels) == self.MAX_CHANNELS:
-            raise ValueError("%s cannot hold more than %d channels."
-                             % (type(self), self.MAX_CHANNELS))
-        c = Channel(channel)
-        c.label = label or c.texname
-        c.filter = filter
-        if frametype is None:
-            frametype = '%s_%s' % (c.ifo, NDS2_FRAME_TYPE[c.type])
-        self._channels[c] = frametype
+    # ------------------------------------------
+    # Get old data
+
+    def backfill(self):
+        """Retrieve old data to populate the display
+        """
+        start = self.epoch - self.duration
+        end = self.epoch - self.buffer.interval
+        self.buffer.get((start, end), fetch=True, pad=self.buffer.pad)
+        self.gpsstart = start
+        self.logger.info('Backfill complete')
 
     # ------------------------------------------
     # Update data
+
+    def new_frame_seq(self):
+        """Set up frame sequence for an `Animation`
+
+        This is just a call to the :meth:`DataSource.iterate` method
+        """
+        return iter(self.buffer)
 
     @abc.abstractproperty
     def data(self):

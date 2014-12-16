@@ -19,6 +19,8 @@
 """GWDV: The gravitational-wave data viewer
 """
 
+import nds2
+
 from . import version
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'

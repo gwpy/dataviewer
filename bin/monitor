@@ -99,6 +99,10 @@ class start(Action):
             '-b', '--back-fill', action='store_true', default=False,
             help='read old data to fill plot before running monitor, '
                  'default: %(default)s')
+        subparser.add_argument(
+            '-t', '--no-latex', action='store_true', default=False,
+            help='run monitor without latex text rendering, '
+                 'default: %(default)s')
         return subparser
 
     def __call__(self, monitor, shell=True):
@@ -126,6 +130,8 @@ class start(Action):
             cmd.append('--non-interactive')
         if args.back_fill:
             cmd.append('--back-fill')
+        if args.no_latex:
+            cmd.append('--no-latex')
         cmd.append('&>%s' % logfile)
 
         # execute process
