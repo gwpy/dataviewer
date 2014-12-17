@@ -106,8 +106,14 @@ class TimeSeriesMonitor(DataMonitor):
                 ax = next(axes)
                 label = (hasattr(channel, 'label') and channel.label or
                          channel.texname)
-                pparams = dict((key, params[key][i]) for key in params if
-                               params[key][i])
+                pparams = {}
+                for key in params:
+		    try:
+		        if params[key][i]:
+		            pparams[key] = params[key][i]
+	            except IndexError:
+		        pass
+
                 ax.plot(self.data[channel], label=label, **pparams)
                 ax.legend()
         # set up all other iterations
