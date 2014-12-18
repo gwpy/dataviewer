@@ -92,7 +92,10 @@ class DataMonitor(Monitor):
         """
         start = self.epoch - self.duration
         end = self.epoch - self.buffer.interval
-        self.buffer.get((start, end), fetch=True, pad=self.buffer.pad)
+        if self.buffer.connection.get_protocol() > 1:
+            self.buffer.get((start, end), fetch=True, pad=self.buffer.pad)
+        else:
+            self.buffer.get((start, end), fetch=True)
         self.gpsstart = start
         self.logger.info('Backfill complete')
 

@@ -27,6 +27,7 @@ from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 from gwpy.plotter import (TimeSeriesPlot, TimeSeriesAxes)
 
 from . import version
+from .buffer import DataBuffer
 from .registry import register_monitor
 from .data import DataMonitor
 
@@ -35,6 +36,22 @@ __version__ = version.version
 
 __all__ = ['TimeSeriesMonitor']
 
+
+# -----------------------------------------------------------------------------
+#
+# Buffer
+#
+# -----------------------------------------------------------------------------
+
+class TimeSeriesBuffer(DataBuffer):
+    pass
+
+
+# -----------------------------------------------------------------------------
+#
+# Monitor
+#
+# -----------------------------------------------------------------------------
 
 class TimeSeriesMonitor(DataMonitor):
     """Monitor some time-series data
@@ -93,7 +110,7 @@ class TimeSeriesMonitor(DataMonitor):
         self.buffer.duration = d
 
     def update_data(self, new, gap='pad', pad=nan):
-        self.epoch = new[self.channels[0]].span[-1]
+        self.epoch = new[self.channels[0]].segments[-1][1]
 
     def refresh(self):
         # set up first iteration
@@ -108,19 +125,19 @@ class TimeSeriesMonitor(DataMonitor):
                          channel.texname)
                 pparams = {}
                 for key in params:
-		    try:
-		        if params[key][i]:
-		            pparams[key] = params[key][i]
-	            except IndexError:
-		        pass
+                    try:
+                        if params[key][i]:
+                            pparams[key] = params[key][i]
+                    except IndexError:
+                        pass
 
                 ax.plot(self.data[channel], label=label, **pparams)
                 ax.legend()
         # set up all other iterations
         else:
             for line, channel in zip(lines, self.channels):
-                line.set_xdata(self.data[channel].times.data)
-                line.set_ydata(self.data[channel].data)
+                line.set_xdata(self.data[channel][-1].times.data)
+                line.set_ydata(self.data[channel][-1].data)
         if 'ylim' not in self.params['refresh']:
             for ax in self._fig.get_axes(self.AXES_CLASS.name):
                 ax.relim()

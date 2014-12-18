@@ -69,12 +69,12 @@ class NDSDataSource(object):
         """
         if force or (self.connection and (connection or host)):
             del self.connection
-            self.logger.info('Closed existing connection')
+            self.logger.debug('Closed existing connection')
 
         # set up connection
         if connection:
             self.connection = connection
-            self.logger.info('Attached open connection to %s:%d...'
+            self.logger.debug('Attached open connection to %s:%d...'
                              % (self.connection.get_host(),
                                 self.connection.get_port()))
         else:
@@ -90,12 +90,12 @@ class NDSDataSource(object):
                     raise ValueError("Cannot auto-select NDS server for "
                                      "ifos: %s" % ifos)
             if port:
-                self.logger.info('Opening connection to %s:%d...'
-                                 % (host, port))
+                self.logger.debug('Opening connection to %s:%d...'
+                                  % (host, port))
             else:
-                self.logger.info('Opening connection to %s...' % host)
+                self.logger.debug('Opening connection to %s...' % host)
             self.connection = ndsio.auth_connect(host, port)
-            self.logger.info('Connection open')
+            self.logger.debug('Connection open')
         return self.connection
 
     def fetch(self, channels, start, end, **kwargs):
@@ -201,10 +201,14 @@ class NDSDataIterator(NDSDataSource):
                     raise
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
-        if not len(self.segments) or abs(self.extent) < self.duration:
-            self.append(new, resize=True, gap=self.gap, pad=self.pad)
-        else:
-            self.append(new, resize=False, gap=self.gap, pad=self.pad)
+        for c in self.channels:
+            old = self.data[c][-1]
+            if not len(self.segments) or abs(self.extent) < self.duration:
+                old.append(new[c], resize=True, gap=self.gap, pad=self.pad,
+                           inplace=True)
+            else:
+                old.append(new[c], resize=False, gap=self.gap, pad=self.pad,
+                           inplace=True)
         self.logger.debug('%d seconds of data received with epoch %s'
                           % (span, epoch))
         return self.data

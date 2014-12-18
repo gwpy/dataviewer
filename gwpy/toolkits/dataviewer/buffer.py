@@ -62,7 +62,7 @@ class BufferCore(object):
     # data classes for buffer storage
     ListClass = TimeSeriesList
     SeriesClass = TimeSeries
-    DictClass = TimeSeriesDict
+    DictClass = OrderedDict
 
     def __init__(self, channels, logger=Logger('buffer'), **kwargs):
         """Create a new `DataBuffer`
@@ -101,7 +101,8 @@ class BufferCore(object):
         """
         # no times given, return what data we have
         if segments is None:
-            return type(self.data)((c, self.data[c]) for c in channels)
+            return type(self.data)((c, self.data.get(c, self.ListClass())) for
+                                   c in self.channels)
         elif isinstance(segments, (Segment, tuple)):
             segments = SegmentList([Segment(map(to_gps, segments))])
         elif isinstance(segments, DataQualityFlag):
@@ -124,32 +125,37 @@ class BufferCore(object):
         out = type(self.data)()
         for channel in self.channels:
             data = self.ListClass()
-            for seg in segments:
-                if abs(seg) < self.data[channel].dt.value:
-                    continue
-                if self.data[channel].span.intersects(seg):
-                    cropped = self.data[channel].crop(
-                        float(seg[0]), float(seg[1]), copy=False)
-                    if cropped.size:
-                        data.append(cropped)
+            for series in self.data[channel]:
+                for seg in segments:
+                    if abs(seg) < series.dt.value:
+                        continue
+                    if series.span.intersects(seg):
+                        cropped = series.crop(
+                            float(seg[0]), float(seg[1]), copy=False)
+                        if cropped.size:
+                            data.append(cropped)
             out[channel] = data.coalesce()
         if isinstance(channel, str) and len(self.channels) == 1:
             return out[self.channels[0]]
         else:
             return out
 
-    def coalesce(self):
+    def coalesce(self, *args, **kwargs):
         """Coalesce the data held within this `DataBuffer`
         """
         for key, data in self.data.iteritems():
-            self.data[key] = data.coalesce()
+            self.data[key] = data.coalesce(*args, **kwargs)
 
-    def append(self, new, inplace=True, **kwargs):
+    def append(self, new, **kwargs):
         """Append data to this `DataBuffer`
         """
-        return self.data.append(new, inplace=inplace, **kwargs)
+        for key in new:
+            if key not in self.data:
+                self.data[key] = self.ListClass()
+            self.data[key].append(new[key])
+        self.coalesce(**kwargs)
 
-    def fetch(self, segments, **kwargs):
+    def fetch(self, channels, start, end, **kwargs):
         raise NotImplementedError(
             "fetch() method must be overwritten by subclass.")
 
@@ -179,7 +185,7 @@ class BufferCore(object):
         """
         try:
             return reduce(
-                operator.or_, (SegmentList([tsl.span]) for tsl in
+                operator.or_, (list_.segments for list_ in
                     self.data.values()))
         except TypeError:
             return SegmentList()
@@ -204,7 +210,7 @@ class BufferCore(object):
         """
         return self.extent[0]
 
-    @property
+    @start.setter
     def start(self, t):
         if t >= self.end:
             raise ValueError("Cannot set start time after current end time")
@@ -212,7 +218,8 @@ class BufferCore(object):
             warnings.warn("Existing start time is before new start time, "
                           "nothing will be done")
         else:
-            self.fetch(self.channels, t, self.start)
+            self.append(self.fetch(self.channels, t, self.start))
+            self.coalesce()
 
     @property
     def end(self):
@@ -220,7 +227,7 @@ class BufferCore(object):
         """
         return self.extent[1]
 
-    @property
+    @end.setter
     def end(self, t):
         if t <= self.start:
             raise ValueError("Cannot set end time before current start time")
@@ -228,7 +235,8 @@ class BufferCore(object):
             warnings.warn("Existing end time is after new end time, "
                           "nothing will be done")
         else:
-            self.fetch(self.channels, self.end, t)
+            self.append(self.fetch(self.channels, self.end, t))
+            self.coalesce()
 
     # -------------------------------------------------------------------------
     # channel properties
@@ -253,7 +261,7 @@ class BufferCore(object):
                 self.channels.append(c)
         # fetch data for new channels
         for seg in self.segments:
-            self.fetch(new, seg[0], seg[1], **fetchargs)
+            self.fetch(new, (seg[0], seg[1]), **fetchargs)
 
 
 # -----------------------------------------------------------------------------
