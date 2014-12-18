@@ -62,7 +62,7 @@ class BufferCore(object):
     # data classes for buffer storage
     ListClass = TimeSeriesList
     SeriesClass = TimeSeries
-    DictClass = TimeSeriesDict
+    DictClass = OrderedDict
 
     def __init__(self, channels, logger=Logger('buffer'), **kwargs):
         """Create a new `DataBuffer`
@@ -138,16 +138,20 @@ class BufferCore(object):
         else:
             return out
 
-    def coalesce(self):
+    def coalesce(self, *args, **kwargs):
         """Coalesce the data held within this `DataBuffer`
         """
         for key, data in self.data.iteritems():
-            self.data[key] = data.coalesce()
+            self.data[key] = data.coalesce(*args, **kwargs)
 
-    def append(self, new, inplace=True, **kwargs):
+    def append(self, new, **kwargs):
         """Append data to this `DataBuffer`
         """
-        return self.data.append(new, inplace=inplace, **kwargs)
+        for key in new:
+            if key not in self.data:
+                self.data[key] = self.ListClass()
+            self.data[key].append(new[key])
+        self.coalesce(**kwargs)
 
     def fetch(self, segments, **kwargs):
         raise NotImplementedError(
@@ -179,7 +183,7 @@ class BufferCore(object):
         """
         try:
             return reduce(
-                operator.or_, (SegmentList([tsl.span]) for tsl in
+                operator.or_, (list_.segments for list_ in
                     self.data.values()))
         except TypeError:
             return SegmentList()
@@ -212,7 +216,7 @@ class BufferCore(object):
             warnings.warn("Existing start time is before new start time, "
                           "nothing will be done")
         else:
-            self.fetch(self.channels, t, self.start)
+            self.fetch(self.channels, (t, self.start))
 
     @property
     def end(self):
@@ -228,7 +232,7 @@ class BufferCore(object):
             warnings.warn("Existing end time is after new end time, "
                           "nothing will be done")
         else:
-            self.fetch(self.channels, self.end, t)
+            self.fetch(self.channels, (self.end, t))
 
     # -------------------------------------------------------------------------
     # channel properties
@@ -253,7 +257,7 @@ class BufferCore(object):
                 self.channels.append(c)
         # fetch data for new channels
         for seg in self.segments:
-            self.fetch(new, seg[0], seg[1], **fetchargs)
+            self.fetch(new, (seg[0], seg[1]), **fetchargs)
 
 
 # -----------------------------------------------------------------------------
