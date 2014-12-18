@@ -169,17 +169,7 @@ class NDSDataIterator(NDSDataSource):
         self.connect(force=True)
         return self.start()
 
-    def next(self):
-        """Get the next data iteration
-
-        For NDS1 connections this method simply loops over the underlying
-        iterator until we have collected enough 1-second chunks.
-
-        Returns
-        -------
-        data : :class:`~gwpy.timeseries.TimeSeriesDict`
-           a new `TimeSeriesDict` with the concantenated, buffered data
-        """
+    def _next(self):
         new = TimeSeriesDict()
         span = 0
         epoch = 0
@@ -201,6 +191,25 @@ class NDSDataIterator(NDSDataSource):
                     raise
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
+        return new
+
+    def next(self):
+        """Get the next data iteration
+
+        For NDS1 connections this method simply loops over the underlying
+        iterator until we have collected enough 1-second chunks.
+
+        Returns
+        -------
+        data : :class:`~gwpy.timeseries.TimeSeriesDict`
+           a new `TimeSeriesDict` with the concantenated, buffered data
+        """
+        # get new data
+        new = self._next()
+        epoch = new.values()[0].span[-1]
+        self.logger.debug('%d seconds of data received up to epoch %s'
+                          % (self.interval, new.values()[0].span[-1]))
+        # record in buffer
         for c in self.channels:
             old = self.data[c][-1]
             if not len(self.segments) or abs(self.extent) < self.duration:
@@ -209,8 +218,6 @@ class NDSDataIterator(NDSDataSource):
             else:
                 old.append(new[c], resize=False, gap=self.gap, pad=self.pad,
                            inplace=True)
-        self.logger.debug('%d seconds of data received with epoch %s'
-                          % (span, epoch))
         return self.data
 
     def fetch(self, *args, **kwargs):
