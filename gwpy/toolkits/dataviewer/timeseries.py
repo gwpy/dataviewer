@@ -93,7 +93,7 @@ class TimeSeriesMonitor(DataMonitor):
         self.buffer.duration = d
 
     def update_data(self, new, gap='pad', pad=nan):
-        self.epoch = new[self.channels[0]].span[-1]
+        self.epoch = new[self.channels[0]].segments[-1][1]
 
     def refresh(self):
         # set up first iteration
@@ -108,13 +108,13 @@ class TimeSeriesMonitor(DataMonitor):
                          channel.texname)
                 pparams = dict((key, params[key][i]) for key in params if
                                params[key][i])
-                ax.plot(self.data[channel], label=label, **pparams)
+                ax.plot(self.data[channel][-1], label=label, **pparams)
                 ax.legend()
         # set up all other iterations
         else:
             for line, channel in zip(lines, self.channels):
-                line.set_xdata(self.data[channel].times.data)
-                line.set_ydata(self.data[channel].data)
+                line.set_xdata(self.data[channel][-1].times.data)
+                line.set_ydata(self.data[channel][-1].data)
         if 'ylim' not in self.params['refresh']:
             for ax in self._fig.get_axes(self.AXES_CLASS.name):
                 ax.relim()

@@ -302,6 +302,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
         return self._fig
 
     def update_data(self, new, gap='pad', pad=0):
+        # for ease strip out last TS of the new data
+        new = dict((key, val[-1]) for (key, val) in new.iteritems())
         # record new data
         self.epoch = new[self.channels[0]].span[-1]
         # get params
