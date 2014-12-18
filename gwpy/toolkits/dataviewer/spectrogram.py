@@ -24,10 +24,12 @@ from itertools import cycle
 
 from astropy.time import Time
 
+from gwpy.timeseries import TimeSeriesDict
+from gwpy.spectrogram import (Spectrogram, SpectrogramList)
 from gwpy.plotter import (SpectrogramPlot, TimeSeriesAxes)
 
 from . import version
-from .buffer import OrderedDict
+from .buffer import (OrderedDict, DataBuffer)
 from .core import PARAMS
 from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor
@@ -44,12 +46,15 @@ __all__ = ['SpectrogramMonitor']
 #
 # -----------------------------------------------------------------------------
 
-class SpectrogramBufferMixin(object):
+class SpectrogramBuffer(DataBuffer):
+    DictClass = OrderedDict
+    SeriesClass = Spectrogram
+    ListClass = SpectrogramList
 
     def fetch(self, channels, start, end, method='welch', stride=1,
               fftlength=1, overlap=0, filter=None, nproc=1, **kwargs):
         # get data
-        raw = super(SpectrogramBufferMixin, self).fetch(
+        raw = super(SpectrogramBuffer, self).fetch(
             channels, start, end, **kwargs)
         # format parameters
         if not isinstance(stride, dict):
@@ -62,7 +67,7 @@ class SpectrogramBufferMixin(object):
             filter = dict((c, filter) for c in channels)
 
         # calculate spectrograms
-        data = TimeSeriesDict
+        data = self.DictClass()
         for channel, ts in zip(channels, raw.values()):
             try:
                 specgram = ts.spectrogram(stride[channel], nproc=nproc,
@@ -75,10 +80,10 @@ class SpectrogramBufferMixin(object):
                     raise ZeroDivisionError("FFT length is 0")
                 else:
                     raise
-            if filter_:
+            if filter[channel]:
                 specgram = (specgram ** (1/2.)).filter(
-                    *filter_, inplace=True) ** 2
-            data[channel].append(specgram)
+                    *filter[channel], inplace=True) ** 2
+            data[channel] = specgram
 
         return data
 
