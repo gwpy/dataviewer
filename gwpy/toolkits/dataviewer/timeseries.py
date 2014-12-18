@@ -27,6 +27,7 @@ from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 from gwpy.plotter import (TimeSeriesPlot, TimeSeriesAxes)
 
 from . import version
+from .buffer import DataBuffer
 from .registry import register_monitor
 from .data import DataMonitor
 
@@ -35,6 +36,22 @@ __version__ = version.version
 
 __all__ = ['TimeSeriesMonitor']
 
+
+# -----------------------------------------------------------------------------
+#
+# Buffer
+#
+# -----------------------------------------------------------------------------
+
+class TimeSeriesBuffer(DataBuffer):
+    pass
+
+
+# -----------------------------------------------------------------------------
+#
+# Monitor
+#
+# -----------------------------------------------------------------------------
 
 class TimeSeriesMonitor(DataMonitor):
     """Monitor some time-series data
