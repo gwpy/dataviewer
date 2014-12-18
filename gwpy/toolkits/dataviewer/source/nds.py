@@ -201,10 +201,14 @@ class NDSDataIterator(NDSDataSource):
                     raise
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
-        if not len(self.segments) or abs(self.extent) < self.duration:
-            self.append(new, resize=True, gap=self.gap, pad=self.pad)
-        else:
-            self.append(new, resize=False, gap=self.gap, pad=self.pad)
+        for c in self.channels:
+            old = self.data[c][-1]
+            if not len(self.segments) or abs(self.extent) < self.duration:
+                old.append(new[c], resize=True, gap=self.gap, pad=self.pad,
+                           inplace=True)
+            else:
+                old.append(new[c], resize=False, gap=self.gap, pad=self.pad,
+                           inplace=True)
         self.logger.debug('%d seconds of data received with epoch %s'
                           % (span, epoch))
         return self.data
