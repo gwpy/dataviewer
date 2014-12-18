@@ -51,6 +51,7 @@ NDS2_FRAME_TYPE = defaultdict(lambda: 'C', [
 class DataMonitor(Monitor):
     """Low-level GW data monitor
     """
+    ITERATOR_CLASS = DataIterator
 
     def __init__(self, *channels, **kwargs):
         kwargs.setdefault('logger', Logger('monitor'))
@@ -65,7 +66,7 @@ class DataMonitor(Monitor):
                 buffargs[key] = kwargs.pop(key)
 
         # set up buffer
-        self.buffer = DataIterator(channels, **buffargs)
+        self.buffer = self.ITERATOR_CLASS(channels, **buffargs)
         labels = kwargs.pop('labels', kwargs.pop('label', []))
         for i, channel in enumerate(self.buffer.channels):
             try:
