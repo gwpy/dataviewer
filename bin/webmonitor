@@ -1,0 +1,158 @@
+#!/usr/bin/env python
+
+import time
+import sys
+import socket
+import subprocess
+import os
+import re
+from gwpy.toolkits.dataviewer.log import Logger
+
+# get config file names
+base = '/data/monitors/'
+config_dir = base + 'etc/'
+plot_dir = base + 'plots/'
+pid_dir = base + 'run'
+# get hostname
+host = socket.getfqdn()
+
+# plot refresh latency (in seconds)
+latency = 1
+
+# monitor webpage template
+html_temp = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"'\
+    '"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n\n'\
+    '<html xmlns="http://www.w3.org/1999/xhtml">\n'\
+    '<head>\n'\
+    '<script type="text/javascript">\n'\
+    'refreshImage = function()\n'\
+    '{\n'\
+    'img = document.getElementById("cam");\n'\
+    'img.src="%(name)s.png?rand=" + Math.random();\n'\
+    '}\n'\
+    '</script>\n'\
+    '<meta http-equiv="Content-Type" content="text/html;' \
+    'charset=iso-8859-1" />\n'\
+    '<title>%(name)s</title>\n'\
+    '</head>\n\n'\
+    '<body onload="window.setInterval(refreshImage, %(latency)i*1000);">\n'\
+    '<img src="%(name)s.png" id="cam" />\n'\
+    '<h3>Monitor status: %(status_short)s</h3>\n'\
+    '<p>Details: %(status_long)s<\p>\n'\
+    '</body>\n'\
+    '</html>'
+
+
+# classes to check process status (adapted from `monitor`)
+class Action(object):
+    name = None
+
+    def __init__(self, logger=None):
+        self.logger = logger or Logger(self.name)
+
+    def get_pid_file(self, monitor):
+        mon = monitor.replace(os.path.sep, '_')
+        return os.path.join(pid_dir, '%s.pid' % mon)
+
+    def get_pid(self, monitor):
+        pidfile = self.get_pid_file(monitor)
+        self.logger.debug('Reading PID file %s' % pidfile)
+        pid, host = open(pidfile, 'r').readline().split()
+        return int(pid), host
+
+    def is_running(self, monitor):
+        pid, executehost = self.get_pid(monitor)
+        if host != executehost:
+            raise RuntimeError('Monitor %r is running on %s, cannot '
+                               'determine status' % (monitor, executehost))
+        try:
+            os.kill(pid, 0)
+        except OSError:
+            return False
+        else:
+            return pid
+
+
+class Status(Action):
+    name = 'status'
+
+    def __call__(self, monitor):
+        """Get current status of monitor.
+
+        Returns
+        -------
+        short_str
+            `OK` or `OFF`
+        long_str
+            Status details.
+        int_id
+            0 (running), 1 (not running), 2 (unknown)
+        """
+        try:
+            pid, executehost = self.get_pid(monitor)
+            # check if process is alive:
+            os.kill(pid, 0)
+            short_str = 'OK'
+            long_str = 'Monitor %r is running [%d]' % (monitor, pid)
+        except IOError:
+            short_str = 'OFF'
+            long_str = 'Monitor %r is not running' % monitor
+        except RuntimeError as e:
+            short_str = 'UNKNOWN'
+            long_str = str(e)
+        except OSError:
+            short_str = 'OFF'
+            long_str = 'Monitor %r is dead'
+
+        return short_str, long_str
+
+# loop over config subdirectories and add config filenames to list
+monitors = []
+for dir_name, subdir_list, file_list in os.walk(config_dir):
+    for f in file_list:
+        if f.endswith('.ini'):
+            monitors.append(os.path.normpath(os.path.join(dir_name, f)))
+
+livemonitors = []
+# loop over monitors
+for monitor in monitors:
+    if monitor.endswith('.ini'):
+        monitor = monitor[:-4]
+    name = os.path.basename(monitor)
+    # check monitor status
+    status_short, status_long = Status(monitor)
+    # add to live montor list
+    if status_short == 'OK':
+        livemonitors.append(name)
+    # create monitor HTML
+    temp_keys = {
+        'name': name,
+        'status_short': status_short,
+        'status_long': status_long,
+        'latency': latency
+    }
+    with open(os.path.join(base, '%s.html' % name), 'w') as f:
+        f.write(html_temp % temp_keys)
+    time.sleep(0.5)
+
+# update index
+index_head = '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"'\
+    '"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n\n'\
+    '<html xmlns="http://www.w3.org/1999/xhtml">\n'\
+    '<head>\n'\
+    '<title>Live monitors</title>\n'\
+    '</head>\n\n'\
+    '<body>\n'\
+    '<h1>Live monitors</h1>\n'\
+    '<ul>\n'
+
+linklist = ['<li><a href=%(n)s.html>%(n)s<\\a><\li>\n' % {'n': n}
+            for n in livemonitors]
+
+index_tail = '<ul>\n'\
+    '<body>\n'\
+
+with open(os.path.join(base, 'index.html'), 'w') as f:
+    f.write(index_head)
+    for monlink in linklist:
+        f.write(monlink)
