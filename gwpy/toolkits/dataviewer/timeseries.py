@@ -115,11 +115,14 @@ class TimeSeriesMonitor(DataMonitor):
     def refresh(self):
         # set up first iteration
         lines = [l for ax in self._fig.axes for l in ax.lines]
+        # extract data
+        data = TimeSeriesDict((key, val[-1]) for (key, val) in
+                              self.data.iteritems())
         if len(lines) == 0:
             axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
             params = self.params['draw']
             # plot channel data
-            for i, channel in enumerate(self.data):
+            for i, channel in enumerate(data):
                 ax = next(axes)
                 label = (hasattr(channel, 'label') and channel.label or
                          channel.texname)
@@ -131,13 +134,13 @@ class TimeSeriesMonitor(DataMonitor):
                     except IndexError:
                         pass
 
-                ax.plot(self.data[channel], label=label, **pparams)
+                ax.plot(data[channel], label=label, **pparams)
                 ax.legend()
         # set up all other iterations
         else:
             for line, channel in zip(lines, self.channels):
-                line.set_xdata(self.data[channel][-1].times.data)
-                line.set_ydata(self.data[channel][-1].data)
+                line.set_xdata(data[channel].times.data)
+                line.set_ydata(data[channel].data)
         if 'ylim' not in self.params['refresh']:
             for ax in self._fig.get_axes(self.AXES_CLASS.name):
                 ax.relim()
