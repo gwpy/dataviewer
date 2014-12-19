@@ -173,11 +173,12 @@ class NDSDataIterator(NDSDataSource):
         new = TimeSeriesDict()
         span = 0
         epoch = 0
+        self.logger.debug('Waiting for next NDS2 packet...')
         while span < self.interval:
             try:
                 buffers = next(self.iterator)
             except RuntimeError as e:
-                self.logger.warning('RuntimeError caught: %s' % str(e))
+                self.logger.error('RuntimeError caught: %s' % str(e))
                 self.restart()
                 break
             for buff, c in zip(buffers, self.channels):
@@ -191,6 +192,8 @@ class NDSDataIterator(NDSDataSource):
                     raise
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
+                self.logger.debug('%ds data for %s received'
+                                  % (abs(ts.span), str(c)))
         return new
 
     def next(self):
@@ -206,6 +209,9 @@ class NDSDataIterator(NDSDataSource):
         """
         # get new data
         new = self._next()
+        if not new:
+            self.logger.warning('No data were received')
+            return self.data
         epoch = new.values()[0].span[-1]
         self.logger.debug('%d seconds of data received up to epoch %s'
                           % (self.interval, new.values()[0].span[-1]))
