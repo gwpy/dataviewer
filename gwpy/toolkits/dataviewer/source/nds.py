@@ -144,12 +144,12 @@ class NDSDataIterator(NDSDataSource):
                                               connection=connection,
                                               logger=logger, **kwargs)
         if self.connection.get_protocol() == 1:
-            stride = 1
+            ndsstride = 1
         else:
-            stride = interval
+            ndsstride = interval
         self.duration = duration
         self.interval = interval
-        self.stride = stride
+        self.ndsstride = ndsstride
         self.gap = gap
         self.pad = pad
 
@@ -160,7 +160,7 @@ class NDSDataIterator(NDSDataSource):
 
     def start(self):
         self.iterator = self.connection.iterate(
-            self.stride, [c.ndsname for c in self.channels])
+            self.ndsstride, [c.ndsname for c in self.channels])
         self.logger.debug('NDSDataIterator ready')
         return self.iterator
 
