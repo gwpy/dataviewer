@@ -50,7 +50,7 @@ PARAMS['figure'] = ['figsize']
 PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel', 'xscale', 'yscale',
                   'suptitle']
 PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
-                  'color', 'alpha']
+                  'color', 'alpha', 'norm', 'vmin', 'vmax', 'cmap']
 PARAMS['refresh'] = ['xlim', 'ylim']
 PARAMS['legend'] = ['bbox_to_anchor', 'loc', 'borderaxespad', 'ncol']
 
