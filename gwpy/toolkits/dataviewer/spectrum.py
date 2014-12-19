@@ -304,6 +304,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
     def update_data(self, new, gap='pad', pad=0):
         # for ease strip out last TS of the new data
         new = dict((key, val[-1]) for (key, val) in new.iteritems())
+        if not new:
+            return
         # record new data
         self.epoch = new[self.channels[0]].span[-1]
         # get params
@@ -412,7 +414,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             prefix = ('FFT length: %ss, Overlap: %ss, Averages: %d -- '
                       % (self.fftlength, self.overlap, self.averages))
             utc = re.sub('\.0+', '',
-                         Time(self.epoch, format='gps', scale='utc').iso)
+                         Time(float(self.epoch), format='gps', scale='utc').iso)
             suffix = 'Last updated: %s UTC (%s)' % (utc, self.epoch)
             self.suptitle = self._fig.suptitle(prefix + suffix)
         self.set_params('refresh')
