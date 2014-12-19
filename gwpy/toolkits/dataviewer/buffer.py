@@ -27,7 +27,7 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 
-from gwpy.detector import ChannelList
+from gwpy.detector import (Channel, ChannelList)
 from gwpy.segments import (Segment, SegmentList, DataQualityFlag)
 from gwpy.time import to_gps
 from gwpy.timeseries import (TimeSeries, TimeSeriesList, TimeSeriesDict,
@@ -73,7 +73,7 @@ class BufferCore(object):
         self.data = self.DictClass()
         self.logger = logger
 
-    def get(self, segments=None, fetch=True, **fetchargs):
+    def get(self, segments=None, channels=None, fetch=True, **fetchargs):
         """Return data for the given segments
 
         This method will fetch any data as required, then return a coalesced
@@ -99,10 +99,27 @@ class BufferCore(object):
             (channel, `TimeSeriesList`) `dict` with data for those
             segments requested
         """
+        # test if user gave one channel
+        if isinstance(channels, (str, Channel)):
+            returndict = False
+            channels = [channels]
+        else:
+            returndict = True
+        # build proper list of channel entries
+        if channels is None:
+            chanlist = self.channels
+        else:
+            chanlist = []
+            names = map(str, self.channels)
+            for channel in channels:
+                try:
+                    chanlist.append(self.channels[names.index(str(channel))])
+                except ValueError:
+                    continue
         # no times given, return what data we have
         if segments is None:
             return type(self.data)((c, self.data.get(c, self.ListClass())) for
-                                   c in self.channels)
+                                   c in chanlist)
         elif isinstance(segments, (Segment, tuple)):
             segments = SegmentList([Segment(map(to_gps, segments))])
         elif isinstance(segments, DataQualityFlag):
@@ -110,7 +127,7 @@ class BufferCore(object):
         # otherwise, check the data we have
         if self.data:
             available = reduce(
-                operator.and_, (self.data[c].segments for c in self.channels))
+                operator.and_, (self.data[c].segments for c in chanlist))
             new = segments - available
         else:
             new = segments
@@ -118,12 +135,12 @@ class BufferCore(object):
         # -- get new data -----------------------
         if fetch and abs(new):
             for seg in new:
-                data = self.fetch(self.channels, seg[0], seg[1], **fetchargs)
+                data = self.fetch(chanlist, seg[0], seg[1], **fetchargs)
                 self.append(data)
 
         # -- return the requested data ----------
         out = type(self.data)()
-        for channel in self.channels:
+        for channel in chanlist:
             data = self.ListClass()
             for series in self.data[channel]:
                 for seg in segments:
@@ -135,10 +152,10 @@ class BufferCore(object):
                         if cropped.size:
                             data.append(cropped)
             out[channel] = data.coalesce()
-        if isinstance(channel, str) and len(self.channels) == 1:
-            return out[self.channels[0]]
-        else:
+        if returndict:
             return out
+        else:
+            return out.values()[0]
 
     def coalesce(self, *args, **kwargs):
         """Coalesce the data held within this `DataBuffer`
