@@ -210,14 +210,7 @@ class NDSDataIterator(NDSDataSource):
         self.logger.debug('%d seconds of data received up to epoch %s'
                           % (self.interval, new.values()[0].span[-1]))
         # record in buffer
-        for c in self.channels:
-            old = self.data[c][-1]
-            if not len(self.segments) or abs(self.extent) < self.duration:
-                old.append(new[c], resize=True, gap=self.gap, pad=self.pad,
-                           inplace=True)
-            else:
-                old.append(new[c], resize=False, gap=self.gap, pad=self.pad,
-                           inplace=True)
+        self.append(new)
         return self.data
 
     def fetch(self, *args, **kwargs):

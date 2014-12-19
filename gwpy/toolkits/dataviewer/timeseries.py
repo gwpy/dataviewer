@@ -113,16 +113,14 @@ class TimeSeriesMonitor(DataMonitor):
         self.epoch = new[self.channels[0]].segments[-1][1]
 
     def refresh(self):
-        # set up first iteration
         lines = [l for ax in self._fig.axes for l in ax.lines]
-        # extract data
-        data = TimeSeriesDict((key, val[-1]) for (key, val) in
-                              self.data.iteritems())
-        if len(lines) == 0:
-            axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
-            params = self.params['draw']
-            # plot channel data
-            for i, channel in enumerate(data):
+        axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
+        params = self.params['draw']
+        for i, channel in enumerate(self.channels):
+            try:
+                line = lines[i]
+            except IndexError:
+                # haven't plotted this channel before
                 ax = next(axes)
                 label = (hasattr(channel, 'label') and channel.label or
                          channel.texname)
@@ -134,13 +132,21 @@ class TimeSeriesMonitor(DataMonitor):
                     except IndexError:
                         pass
 
-                ax.plot(data[channel], label=label, **pparams)
+                ts = self.data[channel][0].copy()
+                for t2 in self.data[channel][1:]:
+                    ts.append(t2, pad=self.buffer.pad, gap=self.buffer.gap)
+                l = ax.plot(ts, label=label, **pparams)
                 ax.legend()
-        # set up all other iterations
-        else:
-            for line, channel in zip(lines, self.channels):
-                line.set_xdata(data[channel].times.data)
-                line.set_ydata(data[channel].data)
+            else:
+                ts = TimeSeries(line.get_ydata(), times=line.get_xdata(),
+                                copy=True)
+                for t2 in self.buffer.get((ts.span[1], self.epoch), channel,
+                                          fetch=False):
+                    ts.append(t2, pad=self.buffer.pad, gap=self.buffer.gap)
+                line.set_xdata(ts.times.data)
+                line.set_ydata(ts.data)
+
+        # format figure
         if 'ylim' not in self.params['refresh']:
             for ax in self._fig.get_axes(self.AXES_CLASS.name):
                 ax.relim()
