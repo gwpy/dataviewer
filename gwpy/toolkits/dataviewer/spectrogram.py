@@ -20,7 +20,7 @@
 """
 
 import re
-from itertools import cycle
+from itertools import (cycle, izip_longest)
 
 import numpy
 
@@ -136,6 +136,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         method = kwargs.pop('method', 'welch')
         window = kwargs.pop('window', None)
         filter = kwargs.pop('filter', None)
+        ratio = kwargs.pop('ratio', None)
         kwargs.setdefault('interval', stride)
 
         if kwargs['interval'] % stride:
@@ -151,6 +152,12 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         kwargs.setdefault('gap', 'raise')
         super(SpectrogramMonitor, self).__init__(*channels,
               **kwargs)
+
+        if ratio is not None:
+            if not isinstance(ratio, (list, tuple)):
+                ratio = [ratio] * len(self.channels)
+            for c, r in izip_longest(self.channels, ratio):
+                c.ratio = r
 
         self.buffer.stride = stride
         self.buffer.fftlength = fftlength
@@ -184,6 +191,14 @@ class SpectrogramMonitor(TimeSeriesMonitor):
     def overlap(self, l):
         self.buffer.overlap = overlap
 
+    @property
+    def data(self):
+        return self._data
+
+    @data.setter
+    def data(self, d):
+        self._data = d
+
     def init_figure(self):
         self._fig = self.FIGURE_CLASS(**self.params['figure'])
 
@@ -199,6 +214,22 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         self.set_params('init')
         self.set_params('refresh')
         return self._fig
+
+    def update_data(self, new, gap='pad', pad=0):
+        """Update the `SpectrogramMonitor` data
+
+        This method only applies a ratio, if configured
+        """
+        self.data = {}
+        for channel, speclist in new.iteritems():
+            if hasattr(channel, 'ratio'):
+                self.data[channel] = type(speclist)()
+                for spec in speclist:
+                    self.data[channel].append(spec.ratio(channel.ratio))
+            else:
+                self.data[channel] = speclist
+        return super(SpectrogramMonitor, self).update_data(
+            new, gap=gap, pad=pad)
 
     def refresh(self):
         # extract data
