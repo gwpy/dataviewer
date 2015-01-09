@@ -53,6 +53,7 @@ PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
                   'color', 'alpha', 'norm', 'vmin', 'vmax', 'cmap']
 PARAMS['refresh'] = ['xlim', 'ylim']
 PARAMS['legend'] = ['bbox_to_anchor', 'loc', 'borderaxespad', 'ncol']
+PARAMS['colorbar'] = ['log', 'clim', 'label']
 
 FIGURE_PARAMS = ['title', 'subtitle']
 AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel']

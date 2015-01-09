@@ -233,7 +233,8 @@ class SpectrogramMonitor(TimeSeriesMonitor):
                 coloraxes[i]
             except IndexError:
                 try:
-                    self._fig.add_colorbar(mappable=coll, ax=ax)
+                    self._fig.add_colorbar(mappable=coll, ax=ax,
+                                           **self.params['colorbar'])
                 except Exception as e:
                     self.logger.error(str(e))
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
