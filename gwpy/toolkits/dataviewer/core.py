@@ -216,9 +216,13 @@ class Monitor(TimedAnimation):
             for param in PARAMS[action]:
                 if param in kwargs:
                     v = kwargs.pop(param)
-                    if action == 'draw' and not isinstance(v, (list, tuple)):
-                        v = [v] * len(self.channels)
-                    self.params[action][param] = v
+                elif '%s-%s' % (action, param) in kwargs:
+                    v = kwargs.pop('%s-%s' % (action, param))
+                else:
+                    continue
+                if action == 'draw' and not isinstance(v, (list, tuple)):
+                    v = [v] * len(self.channels)
+                self.params[action][param] = v
         # parse rcParams
         for param in kwargs.keys():
             if param in rcParams:
