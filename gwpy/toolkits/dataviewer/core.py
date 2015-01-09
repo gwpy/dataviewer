@@ -22,6 +22,7 @@
 import abc
 import datetime
 import gc
+from itertools import izip_longest
 
 from gwpy.plotter import rcParams
 
@@ -239,7 +240,10 @@ class Monitor(TimedAnimation):
                 try:
                     getattr(self._fig, 'set_%s' % key)(val)
                 except (AttributeError, RuntimeError):
-                    getattr(self._fig.axes[0], 'set_%s' % key)(val)
+                    if not isinstance(val, (list, tuple)):
+                        val = [val] * len(self._fig.axes)
+                    for ax, v in izip_longest(self._fig.axes, val):
+                        getattr(ax, 'set_%s' % key)(v)
             elif key in AXES_PARAMS:
                 if not (isinstance(val, (list, tuple)) and
                         isinstance(val[0], (list, tuple))):
