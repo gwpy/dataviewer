@@ -280,6 +280,20 @@ class BufferCore(object):
         for seg in self.segments:
             self.fetch(new, (seg[0], seg[1]), **fetchargs)
 
+    def _unique_channel_names(self, chanlist):
+        """Unique-ify a `ChannelList` based on `str` names
+        """
+        out = []
+        for chan in chanlist:
+            uname = self._channel_basename(chan)
+            if uname not in out:
+                out.append(uname)
+        return out
+
+    @staticmethod
+    def _channel_basename(channel):
+        return channel.ndsname.split('/')[0]
+
 
 # -----------------------------------------------------------------------------
 #

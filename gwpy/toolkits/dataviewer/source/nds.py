@@ -120,7 +120,13 @@ class NDSDataSource(object):
         """
         self.logger.info('Fetching data for [%s, %s)' % (start, end))
         kwargs.setdefault('connection', self.connection)
-        return self.RawDictClass.fetch(channels, start, end, **kwargs)
+        uchannels = self._unique_channel_names(channels)
+        data = self.RawDictClass.fetch(uchannels, start, end, **kwargs)
+        out = type(data)()
+        for chan in channels:
+            out[chan] = data[self._channel_basename(chan)].copy()
+        return out
+
 
 register_data_source(NDSDataSource)
 register_data_source(NDSDataSource, 'nds')
@@ -160,7 +166,7 @@ class NDSDataIterator(NDSDataSource):
 
     def start(self):
         self.iterator = self.connection.iterate(
-            self.ndsstride, [c.ndsname for c in self.channels])
+            self.ndsstride, self._unique_channel_names(self.channels))
         self.logger.debug('NDSDataIterator ready')
         return self.iterator
 
@@ -170,6 +176,7 @@ class NDSDataIterator(NDSDataSource):
         return self.start()
 
     def _next(self):
+        uchannels = self._unique_channel_names(self.channels)
         new = TimeSeriesDict()
         span = 0
         epoch = 0
@@ -181,7 +188,7 @@ class NDSDataIterator(NDSDataSource):
                 self.logger.error('RuntimeError caught: %s' % str(e))
                 self.restart()
                 break
-            for buff, c in zip(buffers, self.channels):
+            for buff, c in zip(buffers, uchannels):
                 ts = TimeSeries.from_nds2_buffer(buff)
                 try:
                     new.append({c: ts}, gap=self.gap, pad=self.pad)
@@ -194,7 +201,10 @@ class NDSDataIterator(NDSDataSource):
                 epoch = new[c].span[-1]
                 self.logger.debug('%ds data for %s received'
                                   % (abs(ts.span), str(c)))
-        return new
+        out = type(new)()
+        for chan in self.channels:
+            out[chan] = new[self._channel_basename(chan)].copy()
+        return out
 
     def next(self):
         """Get the next data iteration
