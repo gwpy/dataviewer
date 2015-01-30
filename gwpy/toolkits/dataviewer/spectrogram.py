@@ -88,7 +88,7 @@ class SpectrogramBuffer(DataBuffer):
                     raise ZeroDivisionError("FFT length is 0")
                 else:
                     raise
-            if filter[channel]:
+            if channel in filter and filter[channel]:
                 specgram = specgram.filter(*filter[channel]).copy()
             data[channel] = specgram
 
@@ -145,8 +145,6 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         self.spectrograms = OrderedDict()
         self._flims = None
-        self._colorbar_label = kwargs.pop('colorbar_label', ' ')
-        self._colorbar = None
 
         kwargs.setdefault('yscale', 'log')
         kwargs.setdefault('gap', 'raise')
@@ -220,9 +218,9 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         This method only applies a ratio, if configured
         """
-        self.data = {}
+        self.data = type(self.buffer.data)()
         for channel, speclist in new.iteritems():
-            if hasattr(channel, 'ratio'):
+            if hasattr(channel, 'ratio') and channel.ratio is not None:
                 self.data[channel] = type(speclist)()
                 for spec in speclist:
                     self.data[channel].append(spec.ratio(channel.ratio))
