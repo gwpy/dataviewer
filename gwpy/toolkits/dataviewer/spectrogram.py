@@ -88,6 +88,10 @@ class SpectrogramBuffer(DataBuffer):
                     raise ZeroDivisionError("FFT length is 0")
                 else:
                     raise
+            if hasattr(channel, 'resample') and channel.resample is not None:
+                nyq = float(channel.resample) / 2.
+                nyqidx = int(nyq / specgram.df.value)
+                specgram = specgram[:,:nyqidx]
             if channel in filter and filter[channel]:
                 specgram = specgram.filter(*filter[channel]).copy()
             data[channel] = specgram
@@ -137,6 +141,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         window = kwargs.pop('window', None)
         filter = kwargs.pop('filter', None)
         ratio = kwargs.pop('ratio', None)
+        resample = kwargs.pop('resample', None)
         kwargs.setdefault('interval', stride)
 
         if kwargs['interval'] % stride:
@@ -156,6 +161,11 @@ class SpectrogramMonitor(TimeSeriesMonitor):
                 ratio = [ratio] * len(self.channels)
             for c, r in izip_longest(self.channels, ratio):
                 c.ratio = r
+        if resample is not None:
+            if not isinstance(resample, (list, tuple)):
+                resample = [resample] * len(self.channels)
+            for c, r in izip_longest(self.channels, resample):
+                c.resample = r
 
         self.buffer.stride = stride
         self.buffer.fftlength = fftlength
