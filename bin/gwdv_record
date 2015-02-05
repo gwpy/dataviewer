@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (C) Duncan Macleod (2013)
+#
+# This file is part of GWpyDataViewer.
+#
+# GWpyDataViewer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# GWpyDataViewer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with GWpyDataViewer.  If not, see <http://www.gnu.org/licenses/>.
+
+"""Collect data from one or more live data channels, and write to a file
+"""
+
+import h5py
+
+from argparse import ArgumentParser
+
+from gwpy.toolkits.dataviewer.buffer import DataIterator
+
+from gwpy.toolkits.dataviewer import version
+
+__version__ = version.version
+__author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
+
+parser = ArgumentParser(description=__doc__)
+parser.add_argument('duration', type=float,
+                    help='duration of data requested')
+parser.add_argument('channel', help='name of channel(s)', nargs='+')
+parser.add_argument('-v', '--verbose', action='count', default=2,
+                    help='increase verbose output')
+parser.add_argument('-V', '--version', action='version',
+                    help='show version number and exit')
+parser.version = __version__
+parser.add_argument('-s', '--source', default='nds2',
+                    choices=['nds2'],
+                    help='data source, default: %(default)s')
+parser.add_argument('-o', '--output-file', default='test_point_data.hdf',
+                    help='name of output file for data, default: %(default)s')
+
+args = parser.parse_args()
+args.verbose = max(5 - args.verbose, 0)
+args.verbose *= 10
+
+# create iterator
+iterator = DataIterator(args.channel, source=args.source,
+                        duration=args.duration)
+iterator.logger.setLevel(args.verbose)
+
+# collect data
+while abs(iterator.segments) < args.duration:
+    next(iterator)
+    iterator.logger.info('Storing %d seconds of data'
+                         % abs(iterator.segments[-1]))
+
+iterator.logger.info('------------------')
+iterator.logger.info('Collected all data')
+iterator.logger.info('------------------')
+
+# write data to file
+h5file = h5py.File(args.output_file, 'w')
+for chan, tslist in iterator.data.iteritems():
+    tslist[-1].write(h5file, name=str(chan))
+h5file.close()
+iterator.logger.info('---------------')
+iterator.logger.info('Data written to\n')
+print(args.output_file)
+iterator.logger.info('---------------')
