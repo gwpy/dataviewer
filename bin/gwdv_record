@@ -56,14 +56,21 @@ iterator = DataIterator(args.channel, source=args.source,
 iterator.logger.setLevel(args.verbose)
 
 # collect data
-while abs(iterator.segments) < args.duration:
-    next(iterator)
-    iterator.logger.info('Storing %d seconds of data'
-                         % abs(iterator.segments[-1]))
-
-iterator.logger.info('------------------')
-iterator.logger.info('Collected all data')
-iterator.logger.info('------------------')
+try:
+    while abs(iterator.segments) < args.duration:
+        next(iterator)
+        iterator.logger.info('Storing %d seconds of data'
+                             % abs(iterator.segments[-1]))
+except KeyboardInterrupt:
+    msg = ('Data collection cancelled after %d seconds'
+           % abs(iterator.segments[-1]))
+    iterator.logger.info('-' * len(msg))
+    iterator.logger.info(msg)
+    iterator.logger.info('-' * len(msg))
+else:
+    iterator.logger.info('------------------')
+    iterator.logger.info('Collected all data')
+    iterator.logger.info('------------------')
 
 # write data to file
 h5file = h5py.File(args.output_file, 'w')
