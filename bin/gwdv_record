@@ -71,6 +71,6 @@ for chan, tslist in iterator.data.iteritems():
     tslist[-1].write(h5file, name=str(chan))
 h5file.close()
 iterator.logger.info('---------------')
-iterator.logger.info('Data written to\n')
+iterator.logger.info('Data written to')
 print(args.output_file)
 iterator.logger.info('---------------')
