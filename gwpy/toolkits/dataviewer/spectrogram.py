@@ -53,32 +53,44 @@ class SpectrogramBuffer(DataBuffer):
     SeriesClass = Spectrogram
     ListClass = SpectrogramList
 
-    def fetch(self, channels, start, end, method='welch', stride=1,
-              fftlength=1, overlap=0, filter=None, **kwargs):
+    def __init__(self, channels, stride=1, fftlength=1, overlap=0,
+                 method='welch', filter=None, **kwargs):
+        super(SpectrogramBuffer, self).__init__(channels, **kwargs)
+        self.method = method
+        self.stride = self._param_dict(stride)
+        self.fftlength = self._param_dict(fftlength)
+        self.overlap = self._param_dict(overlap)
+        self.filter = self._param_dict(filter)
+
+    def _param_dict(self, param):
+        # format parameters
+        if not isinstance(param, dict):
+            return dict((c, param) for c in self.channels)
+        return param
+
+    def fetch(self, channels, start, end, **kwargs):
+        # set params
+        fftparams = dict()
+        for param in ['stride', 'fftlength', 'overlap', 'method', 'filter']:
+            fftparams[param] = kwargs.pop(param, getattr(self, param))
         # get data
         tsd = super(SpectrogramBuffer, self).fetch(
             channels, start, end, **kwargs)
-        return self._from_timeseriesdict(tsd, method=method, stride=stride,
-                                         fftlength=fftlength, overlap=overlap,
-                                         filter=filter)
+        return self.from_timeseriesdict(tsd, **fftparams)
 
-    def _from_timeseriesdict(self, tsd, method='welch', stride=1, fftlength=1,
-                             overlap=0, filter=None, nproc=1):
+    def from_timeseriesdict(self, tsd, **kwargs):
         # format parameters
-        if not isinstance(stride, dict):
-            stride = dict((c, stride) for c in self.channels)
-        if not isinstance(fftlength, dict):
-            fftlength = dict((c, fftlength) for c in self.channels)
-        if not isinstance(overlap, dict):
-            overlap = dict((c, overlap) for c in self.channels)
-        if not isinstance(filter, dict):
-            filter = dict((c, filter) for c in self.channels)
+        method = kwargs.pop('method', self.method)
+        stride = self._param_dict(kwargs.pop('stride', self.stride))
+        fftlength = self._param_dict(kwargs.pop('fftlength', self.fftlength))
+        overlap = self._param_dict(kwargs.pop('overlap', self.overlap))
+        filter = self._param_dict(kwargs.pop('filter', self.filter))
 
         # calculate spectrograms
         data = self.DictClass()
         for channel, ts in zip(self.channels, tsd.values()):
             try:
-                specgram = ts.spectrogram(stride[channel], nproc=nproc,
+                specgram = ts.spectrogram(stride[channel],
                                           fftlength=fftlength[channel],
                                           overlap=overlap[channel]) ** (1/2.)
             except ZeroDivisionError:
@@ -101,16 +113,6 @@ class SpectrogramBuffer(DataBuffer):
 
 class SpectrogramIterator(SpectrogramBuffer):
 
-    def __init__(self, channels, interval=1, stride=1, fftlength=1, overlap=0,
-                 method='welch', filter=None, **kwargs):
-        super(SpectrogramIterator, self).__init__(channels, interval=interval,
-                                                  **kwargs)
-        self.stride = stride
-        self.fftlength = fftlength
-        self.overlap = overlap
-        self.method = method
-        self.filter = filter
-
     def _next(self):
         new = super(SpectrogramIterator, self)._next()
         return self._from_timeseriesdict(
@@ -130,7 +132,6 @@ class SpectrogramMonitor(TimeSeriesMonitor):
     type = 'spectrogram'
     FIGURE_CLASS = SpectrogramPlot
     AXES_CLASS = TimeSeriesAxes
-    ITERATOR_CLASS = SpectrogramIterator
 
     def __init__(self, *channels, **kwargs):
         # get FFT parameters
@@ -148,13 +149,29 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             raise ValueError("%s interval must be exact multiple of the stride"
                              % type(self).__name__)
 
-        self.spectrograms = OrderedDict()
-        self._flims = None
+        # build 'data' as SpectrogramBuffer
+        self.spectrograms = SpectrogramIterator(
+            channels, stride=stride, method=method, overlap=overlap,
+            fftlength=fftlength)
+        if isinstance(filter, list):
+            self.spectrograms.filter = dict(zip(self.spectrograms.channels,
+                                                filter))
+        else:
+            self.spectrograms.filter = filter
+        self.fftlength = fftlength
+        self.stride = stride
+        self.overlap = overlap
 
+        # build monitor
         kwargs.setdefault('yscale', 'log')
         kwargs.setdefault('gap', 'raise')
         super(SpectrogramMonitor, self).__init__(*channels,
               **kwargs)
+        self.buffer.channels = self.spectrograms.channels
+
+        # reset buffer duration to store a single stride
+        self.duration = self.buffer.duration
+        self.buffer.duration = stride
 
         if ratio is not None:
             if not isinstance(ratio, (list, tuple)):
@@ -167,38 +184,6 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             for c, r in izip_longest(self.channels, resample):
                 c.resample = r
 
-        self.buffer.stride = stride
-        self.buffer.fftlength = fftlength
-        self.buffer.overlap = overlap
-        self.buffer.method = method
-        if isinstance(filter, list):
-            filter = dict(zip(self.channels, filter))
-        self.buffer.filter = filter
-
-    @property
-    def stride(self):
-        return self.buffer.stride
-
-    @stride.setter
-    def stride(self, l):
-        self.buffer.stride = stride
-
-    @property
-    def fftlength(self):
-        return self.buffer.fftlength
-
-    @fftlength.setter
-    def fftlength(self, l):
-        self.buffer.fftlength = fftlength
-
-    @property
-    def overlap(self):
-        return self.buffer.overlap
-
-    @overlap.setter
-    def overlap(self, l):
-        self.buffer.overlap = overlap
-
     @property
     def data(self):
         return self._data
@@ -206,6 +191,14 @@ class SpectrogramMonitor(TimeSeriesMonitor):
     @data.setter
     def data(self, d):
         self._data = d
+
+    @property
+    def duration(self):
+        return self.spectrograms.duration
+
+    @duration.setter
+    def duration(self, t):
+        self.spectrograms.duration = t
 
     def init_figure(self):
         self._fig = self.FIGURE_CLASS(**self.params['figure'])
@@ -228,16 +221,19 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         This method only applies a ratio, if configured
         """
-        self.data = type(self.buffer.data)()
-        for channel, speclist in new.iteritems():
+        # data buffer will return dict of 1-item lists, so reform to tsd
+        new = TimeSeriesDict((key, val[0]) for key, val in new.iteritems())
+        self.spectrograms.append(self.spectrograms.from_timeseriesdict(new))
+        self.spectrograms.crop(self.epoch - self.duration)
+        self.data = type(self.spectrograms.data)()
+        for channel in self.channels:
+            self.data[channel] = type(self.spectrograms.data[channel])(
+                *self.spectrograms.data[channel])
             if hasattr(channel, 'ratio') and channel.ratio is not None:
-                self.data[channel] = type(speclist)()
-                for spec in speclist:
-                    self.data[channel].append(spec.ratio(channel.ratio))
-            else:
-                self.data[channel] = speclist
-        return super(SpectrogramMonitor, self).update_data(
-            new, gap=gap, pad=pad)
+                self.data[channel][-1] = self.data[channel][-1].ratio(
+                                             channel.ratio)
+        self.epoch = self.data[self.channels[0]][-1].span[-1]
+        return self.data
 
     def refresh(self):
         # extract data
