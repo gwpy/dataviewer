@@ -230,8 +230,10 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             self.data[channel] = type(self.spectrograms.data[channel])(
                 *self.spectrograms.data[channel])
             if hasattr(channel, 'ratio') and channel.ratio is not None:
-                self.data[channel][-1] = self.data[channel][-1].ratio(
-                                             channel.ratio)
+                for i in range(len(self.data[channel])):
+                    self.data[channel][i] = (
+                        self.spectrograms.data[channel][i].ratio(
+                            channel.ratio))
         self.epoch = self.data[self.channels[0]][-1].span[-1]
         return self.data
 
