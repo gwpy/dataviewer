@@ -68,7 +68,7 @@ if args.no_latex:
 mon = from_ini(args.configuration)
 mon.logger.setLevel(args.verbose)
 try:
-    if mon.type == 'timeseries' and args.back_fill:
+    if args.back_fill:
         mon.backfill()
     mon.run(interactive=not args.non_interactive)
 except KeyboardInterrupt:
