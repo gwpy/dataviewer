@@ -171,7 +171,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         # reset buffer duration to store a single stride
         self.duration = self.buffer.duration
-        self.buffer.duration = stride
+        self.buffer.duration = kwargs['interval']
 
         if ratio is not None:
             if not isinstance(ratio, (list, tuple)):
