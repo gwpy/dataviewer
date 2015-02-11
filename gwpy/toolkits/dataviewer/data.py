@@ -92,14 +92,26 @@ class DataMonitor(Monitor):
     def backfill(self):
         """Retrieve old data to populate the display
         """
+        self.logger.info('Backfilling monitor...')
         start = self.epoch - self.duration
         end = self.epoch - self.buffer.interval
-        if self.buffer.connection.get_protocol() > 1:
-            self.buffer.get((start, end), fetch=True, pad=self.buffer.pad)
-        else:
-            self.buffer.get((start, end), fetch=True)
-        self.gpsstart = start
-        self.logger.info('Backfill complete')
+        while True:
+            self.logger.debug('Attempting backfill for interval %d-%d'
+                             % (int(start), int(end)))
+            try:
+                new = self.buffer.get((start, end), fetch=True,
+                                      pad=self.buffer.pad)
+            except RuntimeError:
+                if (end - self.buffer.interval) < start:
+                    break
+                self.logger.error('RuntimeError encoutered, trying a smaller '
+                                  'backfill set')
+                end -= self.buffer.interval
+                continue
+            self.gpsstart = start
+            self.update_data(new)
+            self.logger.info('Backfill complete')
+            return
 
     # ------------------------------------------
     # Update data
