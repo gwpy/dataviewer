@@ -180,6 +180,16 @@ class BufferCore(object):
         raise NotImplementedError(
             "iterate() method must be overwritten by subclass.")
 
+    def crop(self, start=None, end=None, copy=False):
+        self.coalesce()
+        for key, data in self.data.iteritems():
+            n = len(data)
+            for i, series in enumerate(data[::-1]):
+                self.data[key][n-1-i] = series.crop(
+                    start=start, end=end, copy=copy)
+                if not self.data[key][n-1-i].size:
+                    self.data[key].pop(n-1-i)
+
     # -------------------------------------------------------------------------
     # data properties/methods
 
