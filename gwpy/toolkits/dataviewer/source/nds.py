@@ -227,6 +227,8 @@ class NDSDataIterator(NDSDataSource):
                           % (self.interval, new.values()[0].span[-1]))
         # record in buffer
         self.append(new)
+        if abs(self.segments) > self.duration:
+            self.crop(start=epoch-self.duration)
         return self.data
 
     def fetch(self, *args, **kwargs):
