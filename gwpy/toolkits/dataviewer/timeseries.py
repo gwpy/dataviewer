@@ -143,8 +143,8 @@ class TimeSeriesMonitor(DataMonitor):
                 for t2 in self.buffer.get((ts.span[1], self.epoch), channel,
                                           fetch=False):
                     ts.append(t2, pad=self.buffer.pad, gap=self.buffer.gap)
-                line.set_xdata(ts.times.data)
-                line.set_ydata(ts.data)
+                line.set_xdata(ts.times.value)
+                line.set_ydata(ts.value)
 
         # format figure
         if 'ylim' not in self.params['refresh']:
