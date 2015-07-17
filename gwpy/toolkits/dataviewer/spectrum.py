@@ -253,7 +253,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             fmin = self._comb_flims[0]
             fmax = self._comb_flims[1]
             for i, spec in cha_spec.iteritems():
-                f = spec.frequencies.data
+                f = spec.frequencies.value
                 cha_spec[i] = spec[(fmin < f) & (f < fmax)]
             for i, spec in ref_spec.iteritems():
                 f = spec.frequencies
@@ -344,7 +344,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 return
             # calculated new average
             if self.method == 'median-mean' and len(SPECTRA[channel]) == 1:
-                spec = SPECTRA[channel][0].data
+                spec = SPECTRA[channel][0].value
             elif self.method == 'median-mean':
                 odd = numpy.median(SPECTRA[channel][::2], axis=0)
                 even = numpy.median(SPECTRA[channel][1::2], axis=0)
@@ -395,13 +395,13 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # set up all other iterations
         else:
             for line, channel in zip(lines[:ncha], self.channels):
-                line.set_xdata(self.spectra[channel].frequencies.data)
-                line.set_ydata(self.spectra[channel].data)
+                line.set_xdata(self.spectra[channel].frequencies.value)
+                line.set_ydata(self.spectra[channel].value)
             for line, comb in zip(lines[ncha:], self.combinations.keys()):
                 try:
                     comb = self.parse_combination(comb)
-                    line.set_xdata(comb.frequencies.data)
-                    line.set_ydata(comb.data)
+                    line.set_xdata(comb.frequencies.value)
+                    line.set_ydata(comb.value)
                 except ValueError:
                     self.logger.warning('Did not find channel spectrum.')
         for ax in self._fig.get_axes(self.AXES_CLASS.name):
