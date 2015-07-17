@@ -10,3 +10,4 @@
 .DS_Store
 /examples/*.png
 /.idea
+/.eggs/
