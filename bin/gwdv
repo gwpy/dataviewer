@@ -44,7 +44,7 @@ parser.add_argument('-V', '--version', action='version',
                     help='show version number and exit')
 parser.version = __version__
 parser.add_argument('configuration', action='store', type=str,
-                    help='Path to configuration file for monitor')
+                    nargs='+', help='Path to configuration file for monitor')
 parser.add_argument('-n', '--non-interactive', action='store_true',
                     default=False,
                     help='Process monitor without displaying to screen, '
