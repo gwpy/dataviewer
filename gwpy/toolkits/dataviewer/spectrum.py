@@ -325,7 +325,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             try:
                 fftepoch = SPECTRA[channel][-1].epoch.gps + (
                                self.fftlength - self.overlap)
-            except (KeyError, IndexError):
+            except (KeyError, IndexError, AttributeError):
                 SPECTRA[channel] = []
                 fftepoch = new[channel].epoch.gps
             data = new[channel].crop(start=fftepoch)
