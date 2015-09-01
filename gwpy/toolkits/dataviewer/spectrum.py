@@ -355,7 +355,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 spec = numpy.sum([s*w for (s, w) in
                                   zip(SPECTRA[channel], weights)], axis=0)
             self.spectra[channel] = Spectrum(spec)
-            self.spectra[channel].__dict__ = SPECTRA[channel][0].copy_metadata()
+            self.spectra[channel].__dict__ = (
+                SPECTRA[channel][0].copy_metadata())
             if channel.filter:
                 self.spectra[channel] = self.spectra[channel].filter(
                     *channel.filter)
