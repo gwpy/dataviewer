@@ -31,9 +31,9 @@ import h5py
 
 from argparse import (ArgumentParser, RawDescriptionHelpFormatter)
 
-from gwpy.toolkits.dataviewer.buffer import DataIterator
+from dataviewer.buffer import DataIterator
 
-from gwpy.toolkits.dataviewer import version
+from dataviewer import version
 
 __version__ = version.version
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'

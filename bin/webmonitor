@@ -6,7 +6,7 @@ import socket
 import subprocess
 import os
 import re
-from gwpy.toolkits.dataviewer.log import Logger
+from dataviewer.log import Logger
 
 # get config file names
 base = '/data/monitors/'

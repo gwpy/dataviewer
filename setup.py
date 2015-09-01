@@ -67,7 +67,7 @@ AUTHOR = 'Duncan Macleod'
 AUTHOR_EMAIL = 'duncan.macleod@ligo.org'
 LICENSE = 'GPLv3'
 
-VERSION_PY = os.path.join('gwpy', 'toolkits', PACKAGENAME, 'version.py')
+VERSION_PY = os.path.join(PACKAGENAME, 'version.py')
 
 
 # -----------------------------------------------------------------------------
@@ -306,7 +306,6 @@ setup(name=DISTNAME,
       ],
       install_requires=[
       ] + extra_install_requires,
-      namespace_packages=['gwpy', 'gwpy.toolkits'],
       use_2to3=False,
       classifiers=[
           'Programming Language :: Python',

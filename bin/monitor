@@ -31,8 +31,8 @@ import re
 
 from argparse import ArgumentParser
 
-from gwpy.toolkits.dataviewer import version
-from gwpy.toolkits.dataviewer.log import Logger
+from dataviewer import version
+from dataviewer.log import Logger
 
 
 __version__ = version.version

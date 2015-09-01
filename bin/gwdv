@@ -31,8 +31,8 @@ from argparse import ArgumentParser
 from matplotlib.pyplot import switch_backend
 from matplotlib import rcParams
 
-from gwpy.toolkits.dataviewer import from_ini
-from gwpy.toolkits.dataviewer import version
+from dataviewer import from_ini
+from dataviewer import version
 
 __version__ = version.version
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
