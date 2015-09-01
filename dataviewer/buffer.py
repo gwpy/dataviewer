@@ -110,12 +110,21 @@ class BufferCore(object):
             chanlist = self.channels
         else:
             chanlist = []
+            new = []
             names = map(str, self.channels)
             for channel in channels:
                 try:
                     chanlist.append(self.channels[names.index(str(channel))])
                 except ValueError:
-                    continue
+                    if fetch:
+                        new.append(str(channel))
+                    else:
+                        raise
+            if new:
+                self.add_channels(*new, **fetchargs)
+                names = map(str, self.channels)
+                for c in new:
+                    chanlist.append(self.channels[names.index(str(c))])
         # no times given, return what data we have
         if segments is None:
             return type(self.data)((c, self.data.get(c, self.ListClass())) for
