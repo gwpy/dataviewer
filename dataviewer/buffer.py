@@ -280,15 +280,16 @@ class BufferCore(object):
             keyword arguments to pass to the `fetch()` method.
         """
         # find new channels
-        channels = ChannelList.from_names(channels)
+        channels = ChannelList.from_names(*channels)
         new = []
         for c in channels:
             if c not in self.channels:
                 new.append(c)
                 self.channels.append(c)
+                self.data[c] = self.ListClass()
         # fetch data for new channels
         for seg in self.segments:
-            self.fetch(new, (seg[0], seg[1]), **fetchargs)
+            self.get((seg[0], seg[1]), channels=new, **fetchargs)
 
     def _unique_channel_names(self, chanlist):
         """Unique-ify a `ChannelList` based on `str` names
