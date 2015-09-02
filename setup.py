@@ -135,7 +135,7 @@ class GitVersionMixin(object):
              use('agg')
         except ImportError:
              pass
-        from gwpy.toolkits import dataviewer
+        import dataviewer
         self.distribution.metadata.version = dataviewer.__version__
         desc, longdesc = dataviewer.__doc__.split('\n', 1)
         self.distribution.metadata.description = desc
