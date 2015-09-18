@@ -102,7 +102,7 @@ class SpectrogramBuffer(DataBuffer):
                 try:
                     specgram = ts.spectrogram(stride[channel],
                                               fftlength=fftlength[channel],
-                                              overlap=overlap[channel])
+                                              overlap=overlap[channel])**(1/2.)
                 except ZeroDivisionError:
                     if stride[channel] == 0:
                         raise ZeroDivisionError("Spectrogram stride is 0")
@@ -292,9 +292,9 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                 for spec in self.spectrograms.data[channel]:
                     ranges = []
                     for x in spec:
-                        psd = Spectrum(x.value, frequencies=spec.frequencies, channel=spec.channel,
+                        asd = Spectrum(x.value, frequencies=spec.frequencies, channel=spec.channel,
                                        unit=spec.unit).crop(self.flow, self.fhigh)
-                        range_spec = inspiral_range_psd(psd)
+                        range_spec = inspiral_range_psd(asd**2)
                         ranges.append((range_spec * range_spec.df.value) ** (0.5))
                     self.data[channel].append(type(spec).from_spectra(
                         *ranges, epoch=spec.epoch, dt=spec.dt))
