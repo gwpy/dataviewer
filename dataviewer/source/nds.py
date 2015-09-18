@@ -21,6 +21,7 @@
 
 import nds2
 
+from numpy import ceil
 from gwpy.detector import Channel
 from gwpy.io import nds as ndsio
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
@@ -152,7 +153,7 @@ class NDSDataIterator(NDSDataSource):
         if self.connection.get_protocol() == 1:
             ndsstride = 1
         else:
-            ndsstride = interval
+            ndsstride = int(ceil(interval))
         self.duration = duration
         self.interval = interval
         self.ndsstride = ndsstride

@@ -139,7 +139,7 @@ class TimeSeriesMonitor(DataMonitor):
                 ax.legend()
             else:
                 ts = TimeSeries(line.get_ydata(), times=line.get_xdata(),
-                                copy=True)
+                                copy=True).copy()  # the .copy() shouln't be necessary...
                 for t2 in self.buffer.get((ts.span[1], self.epoch), channel,
                                           fetch=False):
                     ts.append(t2, pad=self.buffer.pad, gap=self.buffer.gap)

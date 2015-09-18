@@ -335,6 +335,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 fdata = new[channel].crop(fftepoch, fftepoch + self.fftlength)
                 fft = fdata.asd(self.fftlength, self.overlap, method=method,
                                 **self.window)
+                fft.epoch = fdata.epoch # is this really necessary? why doesn't the .asd method copy it?
                 self.logger.debug('%ds ASD calculated for %s'
                                   % (self.fftlength, str(channel)))
                 SPECTRA[channel] = (SPECTRA[channel] + [fft])[-self.averages:]
