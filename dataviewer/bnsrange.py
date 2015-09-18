@@ -24,7 +24,7 @@ from epics import caget
 import re
 from itertools import (cycle, izip_longest)
 
-import numpy
+
 
 from astropy.time import Time
 
@@ -33,17 +33,16 @@ from gwpy.spectrogram import (Spectrogram, SpectrogramList)
 from gwpy.plotter import (SpectrogramPlot, TimeSeriesAxes)
 from gwpy.spectrum import Spectrum
 from gwpy.astro.range import inspiral_range_psd
-from gwpy.detector import Channel
+
 import warnings
-import collections
+
 warnings.filterwarnings("ignore")
 import pickle
-import time
-import calendar
+
 
 from . import version
-from .buffer import (OrderedDict, DataBuffer, DataIterator)
-from .core import PARAMS
+from .buffer import (OrderedDict, DataBuffer)
+
 from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor
 
@@ -294,11 +293,8 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
             self.data[channel] = type(self.spectrograms.data[channel])()
             for spec in self.spectrograms.data[channel]:
                 ranges = []
-                for i, x in enumerate(spec):
-                    cut_ind = [i for i, ff in enumerate(x.index.data) 
-                                   if ff>=self.flow and ff<=self.fhigh]
-                    asd = Spectrum(x[cut_ind],  
-                            frequencies=spec.frequencies[cut_ind], copy=False)
+                for x in spec:
+                    asd = Spectrum(x.value, frequencies=spec.frequencies, channel=spec.channel, unit=spec.unit).crop(self.flow, self.fhigh)
                     range_spec = inspiral_range_psd(asd**2)
                     ranges.append((range_spec*range_spec.df.value)**(0.5))
                 self.data[channel].append(type(spec).from_spectra(
