@@ -82,7 +82,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # add references
         self._references = OrderedDict()
         if 'reference' in kwargs:
-            self.add_reference(kwargs.pop('reference'))  #aaargh e se voglio dargli uno spettro nei kwargs perchè sono interattivo?
+            self.add_reference(kwargs.pop('reference'))
         # add combinations
         self.combinations = OrderedDict()
         if 'combination' in kwargs:
