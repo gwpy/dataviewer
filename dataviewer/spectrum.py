@@ -113,7 +113,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         Arguments
         ---------
-        refs: `Spectrum`, `tuple`, `list`
+        refs: `Spectrum`, `dict`, `tuple`, `list`
             Reference spectra. Can be:
             - `Spectrum`: one single reference spectrum, label taken
             from name and needs to be unique
