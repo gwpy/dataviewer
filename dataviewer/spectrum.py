@@ -82,7 +82,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # add references
         self._references = OrderedDict()
         if 'reference' in kwargs:
-            self.add_reference(kwargs.pop('reference'))
+            self.add_reference(kwargs.pop('reference'))  #aaargh e se voglio dargli uno spettro nei kwargs perchè sono interattivo?
         # add combinations
         self.combinations = OrderedDict()
         if 'combination' in kwargs:
@@ -113,24 +113,32 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         Arguments
         ---------
-        refs: `Spectrum`, `dict`, `tuple`, `list`
+        refs: `Spectrum`, `tuple`, `list`
             Reference spectra. Can be:
-            - `Spectrum`: one single reference spectrum, label taken from name.
-            - `dict`: keys must be `Spectrum` objects, values must be
-            dictionaries containing plot arguments, e.g.
-               refs = {refspectrum: {'color': 'r'}, ...}
+            - `Spectrum`: one single reference spectrum, label taken
+            from name and needs to be unique
+            - 'dict': keys must be the path of the files containing the spectra,
+            values must be dictionaries containing plot arguments, e.g.
+                refs = {'/path/to/file':{'label':'somelabel', ...}, ...}
             - 'tuple': first element must be `Spectrum` object, second must be
              dictionary containing plot arguments, e.g.
-                refs = (refspectrum, {'color': 'r'}, ...)
+                refs = ((refspectrum, {'color': 'r'}), ...)
             - `list`: each element can be a `Spectrum` or a tuple following the
             format outlined above.
         """
         if isinstance(ref, Spectrum):
-            refparams.setdefault('label', ref.name or 'Reference')
-            self._references[ref] = refparams
+            refparams.setdefault('label', ref.name)
+            refparams['spectrum'] = ref
+            self._references[refparams['label']] = refparams
         elif isinstance(ref, dict):
             for key, val in ref.iteritems():
-                self.add_reference(key, **val)
+                if 'format' in val:
+                    refspec = Spectrum.read(key, format=val.pop('format'))
+                else:
+                    refspec = Spectrum.read(key)
+                refspec.name = val.pop('name')
+                self.add_reference(refspec, **val)
+
         elif isinstance(ref, (list, tuple)):
             # list of references provided
             for r in ref:
@@ -278,7 +286,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
-            for spec, plotparams in self._references.iteritems():
+            for _, plotparams in self._references.iteritems():
+                spec = plotparams.pop('spectrum')
                 ax.plot(spec, **plotparams)
                 self.legend = ax.legend(**self.params['legend'])
 
