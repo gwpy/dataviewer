@@ -144,7 +144,7 @@ class NDSDataIterator(NDSDataSource):
     """
     def __init__(self, channels, duration=0, interval=1, host=None,
                  port=None, connection=None, logger=Logger('nds'),
-                 gap='pad', pad=0.0, **kwargs):
+                 gap='pad', pad=0.0, max_attempts=10, **kwargs):
         """Construct a new iterator
         """
         super(NDSDataIterator, self).__init__(channels, host=host, port=port,
@@ -159,7 +159,7 @@ class NDSDataIterator(NDSDataSource):
         self.ndsstride = ndsstride
         self.gap = gap
         self.pad = pad
-
+        self.max_attempts = max_attempts
         self.start()
 
     def __iter__(self):
@@ -187,14 +187,24 @@ class NDSDataIterator(NDSDataSource):
         new = TimeSeriesDict()
         span = 0
         epoch = 0
+        attempts = 0
         self.logger.debug('Waiting for next NDS2 packet...')
         while span < self.interval:
             try:
                 buffers = next(self.iterator)
             except RuntimeError as e:
                 self.logger.error('RuntimeError caught: %s' % str(e))
-                self.restart()
-                break
+                if attempts < self.max_attempts:
+                    attempts += 1
+                    self.logger.warning(
+                        'Attempting to reconnect to the nds server... {0}/{1}'.format(
+                            attempts, self.max_attempts))
+                    self.restart()
+                    continue
+                else:
+                    self.logger.error('Maximum number of reconnect attempts reached, exiting...')
+                    break
+            attempts = 0
             for buff, c in zip(buffers, uchannels):
                 ts = TimeSeries.from_nds2_buffer(buff)
                 try:
