@@ -359,7 +359,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             self.spectra[channel].__dict__ = (
                 SPECTRA[channel][0].copy_metadata())
             if channel.filter:
-                self.spectra[channel] = self.spectra[channel].filter(
+                self.spectra[channel] = self.spectra[channel].zpk(
                     *channel.filter)
             self.logger.debug('%s ASD recalculated for %s'
                               % (self.method, str(channel)))
