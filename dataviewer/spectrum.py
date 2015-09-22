@@ -132,10 +132,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             self._references[refparams['label']] = refparams
         elif isinstance(ref, dict):
             for key, val in ref.iteritems():
-                if 'format' in val:
-                    refspec = Spectrum.read(key, format=val.pop('format'))
-                else:
-                    refspec = Spectrum.read(key)
+                refspec = Spectrum.read(key, format=val.pop('format', None))
                 refspec.name = val.pop('name')
                 self.add_reference(refspec, **val)
 
@@ -368,7 +365,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             self.spectra[channel].__dict__ = (
                 SPECTRA[channel][0].copy_metadata())
             if channel.filter:
-                self.spectra[channel] = self.spectra[channel].filter(
+                self.spectra[channel] = self.spectra[channel].zpk(
                     *channel.filter)
             self.logger.debug('%s ASD recalculated for %s'
                               % (self.method, str(channel)))
