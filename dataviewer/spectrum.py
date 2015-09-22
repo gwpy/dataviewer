@@ -115,27 +115,22 @@ class SpectrumMonitor(TimeSeriesMonitor):
         ---------
         refs: `Spectrum`, `dict`, `tuple`, `list`
             Reference spectra. Can be:
-            - `Spectrum`: one single reference spectrum, label taken
-            from name and needs to be unique
-            - 'dict': keys must be the path of the files containing the spectra,
-            values must be dictionaries containing plot arguments, e.g.
-                refs = {'/path/to/file':{'label':'somelabel', ...}, ...}
+            - `Spectrum`: one single reference spectrum, label taken from name.
+            - `dict`: keys must be `Spectrum` objects, values must be
+            dictionaries containing plot arguments, e.g.
+               refs = {refspectrum: {'color': 'r'}, ...}
             - 'tuple': first element must be `Spectrum` object, second must be
              dictionary containing plot arguments, e.g.
-                refs = ((refspectrum, {'color': 'r'}), ...)
+                refs = (refspectrum, {'color': 'r'}, ...)
             - `list`: each element can be a `Spectrum` or a tuple following the
             format outlined above.
         """
         if isinstance(ref, Spectrum):
-            refparams.setdefault('label', ref.name)
-            refparams['spectrum'] = ref
-            self._references[refparams['label']] = refparams
+            refparams.setdefault('label', ref.name or 'Reference')
+            self._references[ref] = refparams
         elif isinstance(ref, dict):
             for key, val in ref.iteritems():
-                refspec = Spectrum.read(key, format=val.pop('format', None))
-                refspec.name = val.pop('name')
-                self.add_reference(refspec, **val)
-
+                self.add_reference(key, **val)
         elif isinstance(ref, (list, tuple)):
             # list of references provided
             for r in ref:
@@ -283,8 +278,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
-            for _, plotparams in self._references.iteritems():
-                spec = plotparams.pop('spectrum')
+            for spec, plotparams in self._references.iteritems():
                 ax.plot(spec, **plotparams)
                 self.legend = ax.legend(**self.params['legend'])
 
@@ -365,7 +359,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             self.spectra[channel].__dict__ = (
                 SPECTRA[channel][0].copy_metadata())
             if channel.filter:
-                self.spectra[channel] = self.spectra[channel].zpk(
+                self.spectra[channel] = self.spectra[channel].filter(
                     *channel.filter)
             self.logger.debug('%s ASD recalculated for %s'
                               % (self.method, str(channel)))

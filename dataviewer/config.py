@@ -136,6 +136,7 @@ def from_ini(filepath, ifo=None):
     basics = dict(cp.items('monitor', raw=True))
     type_ = basics.pop('type')
     channels = map(str, ChannelList.from_names(basics.pop('channels', '')))
+    references = basics.pop('references', None)
     combinations = basics.pop('combinations', None)
     basics = dict((key, safe_eval(val)) for (key, val) in basics.iteritems())
     # get type
@@ -148,9 +149,9 @@ def from_ini(filepath, ifo=None):
     if not channels:
         channels = [c for c in sections if c not in ['monitor', 'plot']
                     if c[:4] not in ['ref:', 'com:']]
-
-    references = [c for c in sections if c not in ['monitor', 'plot']
-                  if c[:4] == 'ref:']
+    if references is None:
+        references = [c for c in sections if c not in ['monitor', 'plot']
+                      if c[:4] == 'ref:']
     if combinations is None:
         combinations = [c for c in sections if c not in ['monitor', 'plot']
                         if c[:4] == 'com:']
@@ -175,36 +176,44 @@ def from_ini(filepath, ifo=None):
             cparams[param].append(val)
 
     # get reference parameters
-    # reference parameters will be sent to the monitor in a dictionary with the path
-    # of each reference as keys and with the name and the other parameters as a dictionary
-    # for each key
-
     rparams = OrderedDict()
     for reference in references:
-        rparamsi = OrderedDict([('name', reference[4:])])
-        for param, val in cp.items(reference):
-            val = safe_eval(val)
-            if param == 'path':
-                refpath = val
-            else:
-                rparamsi[param] = val
-            try:
-                if os.path.isdir(refpath):
-                    # Section is a directory:
-                    # import all references in folder (assumes 'dat' format)
-                    for f in os.listdir(refpath):
-                        if os.path.splitext(f)[1] in ['.txt', '.dat', '.gz']:
-                            refpath += f
-                            rparamsi.setdefault(
-                                'label', os.path.basename(refpath).split('.')[0].replace('_', r' '))
-                            rparams[refpath] = rparamsi
-
+        if os.path.basename(reference[4:]) == '':
+            # Section is a directory:
+            # get parameters (will be applied to all refrences)
+            _params = cp.items(reference)
+            rparamsi = OrderedDict()
+            for param, val in _params:
+                val = safe_eval(val)
+                if param == 'format':
+                    refform = val
                 else:
-                    rparamsi.setdefault(
-                        'label', os.path.basename(refpath).split('.')[0].replace('_', r' '))
-                    rparams[refpath] = rparamsi
-            except NameError:
-                raise ValueError('Cannot load reference {0} plot if no parameter "path" is defined'.format(reference))
+                    rparamsi[param] = val
+            # import all references in folder (assumes 'dat' format)
+            refdir = reference[4:]
+            for f in os.listdir(refdir):
+                if os.path.splitext(f)[1] in ['.txt', '.dat', '.gz']:
+                    refspec = Spectrum.read(refdir + f)
+                    refspec.name = f.split('.')[0].replace('_', r' ')
+                    rparams[refspec] = rparamsi
+        else:
+            # get rerference section
+            _params = cp.items(reference)
+            refpath = reference[4:]
+            refform = 'txt'
+            deflabel = os.path.basename(refpath).split('.')[0]
+            rparamsi = OrderedDict([('label', deflabel)])
+            for param, val in _params:
+                val = safe_eval(val)
+                if param == 'path':
+                    refpath = val
+                elif param == 'format':
+                    refform = val
+                else:
+                    rparamsi[param] = val
+            # load curve
+            refspec = Spectrum.read(refpath, format=refform)
+            rparams[refspec] = rparamsi
 
     # get combination parameters # IN PROGRESS
     combparams = OrderedDict()

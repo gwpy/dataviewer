@@ -166,14 +166,8 @@ class NDSDataIterator(NDSDataSource):
         return self
 
     def start(self):
-        try:
-            self.iterator = self.connection.iterate(
-                self.ndsstride, self._unique_channel_names(self.channels))
-        except RuntimeError as e:
-            if e.message == 'Invalid channel name':
-                self.logger.error(
-                    'Invalid channel name {0}'.format(self._unique_channel_names(self.channels)))
-            raise
+        self.iterator = self.connection.iterate(
+            self.ndsstride, self._unique_channel_names(self.channels))
         self.logger.debug('NDSDataIterator ready')
         return self.iterator
 
