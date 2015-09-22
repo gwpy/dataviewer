@@ -173,7 +173,7 @@ class NDSDataIterator(NDSDataSource):
             if e.message == 'Invalid channel name':
                 self.logger.error(
                     'Invalid channel name {0}'.format(self._unique_channel_names(self.channels)))
-                raise
+            raise
         self.logger.debug('NDSDataIterator ready')
         return self.iterator
 
