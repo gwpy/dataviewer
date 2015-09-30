@@ -117,7 +117,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             Reference spectra. Can be:
             - `Spectrum`: one single reference spectrum, label taken
             from name and needs to be unique
-            - 'dict': keys must be the path of the files containing the spectra,
+            - 'dict':keys must be the path of the files containing the spectra,
             values must be dictionaries containing plot arguments, e.g.
                 refs = {'/path/to/file':{'label':'somelabel', ...}, ...}
             - 'tuple': first element must be `Spectrum` object, second must be
@@ -234,7 +234,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
             # channel and reference spectra
             cha_spec = dict((i, self.spectra[self.channels[i]]) for
                             i in cha_ids)
-            ref_spec = dict((i, self._references.values()[i]['spectrum']) for i in ref_ids)
+            ref_spec = dict((i, self._references.values()[i]['spectrum'])
+                            for i in ref_ids)
 
             if self._flims is None:
                 # PREPARE CHANNELS
