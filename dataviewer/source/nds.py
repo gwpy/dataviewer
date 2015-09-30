@@ -25,6 +25,7 @@ from numpy import ceil
 from gwpy.detector import Channel
 from gwpy.io import nds as ndsio
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
+from fractions import gcd
 
 from .. import version
 from ..log import Logger
@@ -76,8 +77,8 @@ class NDSDataSource(object):
         if connection:
             self.connection = connection
             self.logger.debug('Attached open connection to %s:%d...'
-                             % (self.connection.get_host(),
-                                self.connection.get_port()))
+                              % (self.connection.get_host(),
+                                 self.connection.get_port()))
         else:
             if not host:
                 ifos = list(set([c.ifo for c in self.channels if c.ifo]))
@@ -142,21 +143,22 @@ class NDSDataIterator(NDSDataSource):
 
     For NDS2 protocol connections, this wrapper is trivial.
     """
-    def __init__(self, channels, duration=0, interval=1, host=None,
+    def __init__(self, channels, duration=0, interval=2, host=None,
                  port=None, connection=None, logger=Logger('nds'),
-                 gap='pad', pad=0.0, max_attempts=10, **kwargs):
+                 gap='pad', pad=0.0, max_attempts=50, **kwargs):
         """Construct a new iterator
         """
         super(NDSDataIterator, self).__init__(channels, host=host, port=port,
                                               connection=connection,
                                               logger=logger, **kwargs)
+        self.interval = interval
         if self.connection.get_protocol() == 1:
             ndsstride = 1
         else:
-            ndsstride = int(ceil(interval))
-        self.duration = duration
-        self.interval = interval
+            ndsstride = int(ceil(min(interval, 10)))
         self.ndsstride = ndsstride
+        self._duration = 0
+        self.duration = duration
         self.gap = gap
         self.pad = pad
         self.max_attempts = max_attempts
@@ -171,8 +173,8 @@ class NDSDataIterator(NDSDataSource):
                 self.ndsstride, self._unique_channel_names(self.channels))
         except RuntimeError as e:
             if e.message == 'Invalid channel name':
-                self.logger.error(
-                    'Invalid channel name {0}'.format(self._unique_channel_names(self.channels)))
+                self.logger.error('Invalid channel name {0}'.format(
+                    self._unique_channel_names(self.channels)))
             raise
         self.logger.debug('NDSDataIterator ready')
         return self.iterator
@@ -197,12 +199,13 @@ class NDSDataIterator(NDSDataSource):
                 if attempts < self.max_attempts:
                     attempts += 1
                     self.logger.warning(
-                        'Attempting to reconnect to the nds server... {0}/{1}'.format(
-                            attempts, self.max_attempts))
+                        'Attempting to reconnect to the nds server... {0}/{1}'
+                            .format(attempts, self.max_attempts))
                     self.restart()
                     continue
                 else:
-                    self.logger.error('Maximum number of reconnect attempts reached, exiting...')
+                    self.logger.critical(
+                        'Maximum number of attempts reached, exiting')
                     break
             attempts = 0
             for buff, c in zip(buffers, uchannels):
@@ -211,9 +214,17 @@ class NDSDataIterator(NDSDataSource):
                     new.append({c: ts}, gap=self.gap, pad=self.pad)
                 except ValueError as e:
                     if 'discontiguous' in str(e):
-                        e.args = ('NDS connection dropped data between %d and '
-                                  '%d' % (epoch, ts.span[0]),)
-                    raise
+                        e.message = (
+                            'NDS connection dropped data between {0} and '
+                            '{1}, restarting building the buffer from {1} ') \
+                            .format(epoch, ts.span[0])
+                        self.logger.warning(str(e))
+                        new = TimeSeriesDict()
+                        span = 0
+                        continue
+                    else:
+                        raise
+                        # raise #butto via sti dati e ricomincio?
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
                 self.logger.debug('%ds data for %s received'
@@ -241,11 +252,11 @@ class NDSDataIterator(NDSDataSource):
             return self.data
         epoch = new.values()[0].span[-1]
         self.logger.debug('%d seconds of data received up to epoch %s'
-                          % (self.interval, new.values()[0].span[-1]))
+                          % (epoch - new.values()[0].span[0], epoch))
         # record in buffer
         self.append(new)
         if abs(self.segments) > self.duration:
-            self.crop(start=epoch-self.duration)
+            self.crop(start=epoch - self.duration)
         return self.data
 
     def fetch(self, *args, **kwargs):
@@ -257,6 +268,20 @@ class NDSDataIterator(NDSDataSource):
                 return super(NDSDataIterator, self).fetch(*args, **kwargs)
             else:
                 raise
+
+    @property
+    def duration(self):
+        return float(self._duration)
+
+    @duration.setter
+    def duration(self, d):
+        rinterval = ceil(
+            self.interval / float(self.ndsstride)) * self.ndsstride
+        self._duration = rinterval + d - gcd(rinterval, d)
+        self.logger.debug(
+            'The buffer has been set to store {0} s of data'.format(
+                self.duration))
+
 
 register_data_iterator(NDSDataIterator)
 register_data_iterator(NDSDataIterator, 'nds')
