@@ -70,7 +70,7 @@ class Monitor(TimedAnimation):
     # -------------------------------------------------------------------------
     # Initialise the figure
 
-    def __init__(self, fig=None, interval=1, blit=True, repeat=False,
+    def __init__(self, fig=None, interval=2, blit=True, repeat=False,
                  logger=Logger('monitor'), figname=None, save_every=1,
                  tight_bbox=False, pause=False, clock=False, **kwargs):
         self.logger = logger

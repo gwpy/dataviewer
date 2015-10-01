@@ -80,7 +80,6 @@ class SpectrogramBuffer(DataBuffer):
 
     def from_timeseriesdict(self, tsd, **kwargs):
         # format parameters
-        method = kwargs.pop('method', self.method)
         stride = self._param_dict(kwargs.pop('stride', self.stride))
         fftlength = self._param_dict(kwargs.pop('fftlength', self.fftlength))
         overlap = self._param_dict(kwargs.pop('overlap', self.overlap))
@@ -92,7 +91,7 @@ class SpectrogramBuffer(DataBuffer):
             try:
                 specgram = ts.spectrogram(stride[channel],
                                           fftlength=fftlength[channel],
-                                          overlap=overlap[channel]) ** (1/2.)
+                                          overlap=overlap[channel]) ** (1 / 2.)
             except ZeroDivisionError:
                 if stride[channel] == 0:
                     raise ZeroDivisionError("Spectrogram stride is 0")
@@ -103,7 +102,7 @@ class SpectrogramBuffer(DataBuffer):
             if hasattr(channel, 'resample') and channel.resample is not None:
                 nyq = float(channel.resample) / 2.
                 nyqidx = int(nyq / specgram.df.value)
-                specgram = specgram[:,:nyqidx]
+                specgram = specgram[:, :nyqidx]
             if channel in filter and filter[channel]:
                 specgram = specgram.filter(*filter[channel]).copy()
             data[channel] = specgram
@@ -112,7 +111,6 @@ class SpectrogramBuffer(DataBuffer):
 
 
 class SpectrogramIterator(SpectrogramBuffer):
-
     def _next(self):
         new = super(SpectrogramIterator, self)._next()
         return self._from_timeseriesdict(
@@ -166,7 +164,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         kwargs.setdefault('yscale', 'log')
         kwargs.setdefault('gap', 'raise')
         super(SpectrogramMonitor, self).__init__(*channels,
-              **kwargs)
+                                                 **kwargs)
         self.buffer.channels = self.spectrograms.channels
 
         # reset buffer duration to store a single stride
@@ -205,7 +203,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
-            ax.set_xlim(float(self.epoch), float(self.epoch) + self.duration) # ?
+            ax.set_xlim(float(self.epoch), float(self.epoch) + self.duration)
             ax.set_epoch(float(self.epoch))
 
         for n in range(len(self.channels)):
@@ -221,9 +219,16 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         This method only applies a ratio, if configured
         """
-        # data buffer will return dict of 1-item lists, so reform to tsd
-        new = TimeSeriesDict((key, val[0]) for key, val in new.iteritems())
-        self.spectrograms.append(self.spectrograms.from_timeseriesdict(new))
+        spec_epoch = self.epoch  # TODO: brutto dipende dal primo dato vs inizio del programma
+        # not so fast, biatch
+        while new[self.channels[0]][0].span[-1] >= (spec_epoch + self.stride):
+            # data buffer will return dict of 1-item lists, so reform to tsd
+            _new = TimeSeriesDict((key, val[0].crop(spec_epoch, spec_epoch +
+                                                    self.stride))
+                                  for key, val in new.iteritems())
+            self.spectrograms.append(
+                self.spectrograms.from_timeseriesdict(_new))
+            spec_epoch += self.stride
         self.spectrograms.crop(self.epoch - self.duration)
         self.data = type(self.spectrograms.data)()
         for channel in self.channels:
@@ -286,7 +291,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         self.logger.debug('Figure data updated')
         # add suptitle
-        if not 'suptitle' in self.params['init']:
+        if 'suptitle' not in self.params['init']:
             prefix = ('FFT length: %ss, Overlap: %ss, Stride: %ss -- '
                       % (self.fftlength, self.overlap, self.stride))
             utc = re.sub('\.0+', '',

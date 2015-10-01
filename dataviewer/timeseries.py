@@ -109,7 +109,7 @@ class TimeSeriesMonitor(DataMonitor):
     def duration(self, d):
         self.buffer.duration = d
 
-    def update_data(self, new, gap='pad', pad=nan):
+    def update_data(self, new):
         self.epoch = new[self.channels[0]].segments[-1][1]
 
     def refresh(self):
@@ -123,7 +123,7 @@ class TimeSeriesMonitor(DataMonitor):
                 # haven't plotted this channel before
                 ax = next(axes)
                 label = (hasattr(channel, 'label') and channel.label or
-                         channel.texname)
+                         channel.name)
                 pparams = {}
                 for key in params:
                     try:

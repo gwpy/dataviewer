@@ -117,7 +117,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
             Reference spectra. Can be:
             - `Spectrum`: one single reference spectrum, label taken
             from name and needs to be unique
-            - 'dict': keys must be the path of the files containing the spectra,
+            - 'dict':keys must be the path of the files containing the spectra,
             values must be dictionaries containing plot arguments, e.g.
                 refs = {'/path/to/file':{'label':'somelabel', ...}, ...}
             - 'tuple': first element must be `Spectrum` object, second must be
@@ -234,7 +234,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
             # channel and reference spectra
             cha_spec = dict((i, self.spectra[self.channels[i]]) for
                             i in cha_ids)
-            ref_spec = dict((i, self._references.values()[i]['spectrum']) for i in ref_ids)
+            ref_spec = dict((i, self._references.values()[i]['spectrum'])
+                            for i in ref_ids)
 
             if self._flims is None:
                 # PREPARE CHANNELS
@@ -334,7 +335,15 @@ class SpectrumMonitor(TimeSeriesMonitor):
             except (KeyError, IndexError, AttributeError):
                 SPECTRA[channel] = []
                 fftepoch = new[channel].epoch.gps
-            data = new[channel].crop(start=fftepoch)
+
+            if new[channel].span[0] > fftepoch:
+                s = ('The available data starts at gps {0} '
+                     'which. is after the end of the last spectrogram(gps {1})'
+                     ': a segment is missing and will be skipped!')
+                self.logger.warning(s.format(new[channel].span[0], fftepoch))
+                fftepoch = new[channel].span[0]
+
+            data = new[channel].crop(start=fftepoch) #is this crop necessary? Which is the diff between epoch and span[0]?
             count = 0
             # calculate new FFTs
             while fftepoch + self.fftlength <= data.span[-1]:
