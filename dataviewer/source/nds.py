@@ -19,10 +19,9 @@
 """This module defines the `NDSDataBuffer`
 """
 
-import nds2
+
 
 from numpy import ceil
-from gwpy.detector import Channel
 from gwpy.io import nds as ndsio
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 from fractions import gcd
@@ -32,7 +31,7 @@ from ..log import Logger
 from . import (register_data_source, register_data_iterator)
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
-
+__version__ = version.version
 
 class NDSDataSource(object):
     """A data holder for fetching from NDS
