@@ -102,7 +102,8 @@ class SpectrogramBuffer(DataBuffer):
                 try:
                     specgram = ts.spectrogram(stride[channel],
                                               fftlength=fftlength[channel],
-                                              overlap=overlap[channel])**(1/2.)
+                                              overlap=overlap[channel]) ** (
+                                   1 / 2.)
                 except ZeroDivisionError:
                     if stride[channel] == 0:
                         raise ZeroDivisionError("Spectrogram stride is 0")
@@ -110,7 +111,8 @@ class SpectrogramBuffer(DataBuffer):
                         raise ZeroDivisionError("FFT length is 0")
                     else:
                         raise
-                if hasattr(channel, 'resample') and channel.resample is not None:
+                if hasattr(channel,
+                           'resample') and channel.resample is not None:
                     nyq = float(channel.resample) / 2.
                     nyqidx = int(nyq / specgram.df.value)
                     specgram = specgram[:, :nyqidx]
@@ -198,7 +200,8 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
             stateChannels = self.stateChannel[0].split(",")
             stateCondition = self.stateChannel[1].split(",")
             for i, lockChanls in enumerate(stateChannels):
-                stateDQ = stateDQ and eval(str(caget(lockChanls)) + stateCondition[i])
+                stateDQ = stateDQ and eval(
+                    str(caget(lockChanls)) + stateCondition[i])
         elif len(self.stateChannel) > 2:
             raise UserException("Unknown state channels/ conditions")
 
@@ -287,15 +290,17 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         self.spectrograms.crop(self.epoch - self.duration)
         self.data = type(self.spectrograms.data)()
         if self.spectrograms.data:
-            for channel in self.channels:
+            for channel in self.channels:  # TODO: any way to avoid looping since there is only one channel?
                 self.data[channel] = type(self.spectrograms.data[channel])()
                 for spec in self.spectrograms.data[channel]:
                     ranges = []
                     for x in spec:
-                        asd = Spectrum(x.value, frequencies=spec.frequencies, channel=spec.channel,
-                                       unit=spec.unit).crop(self.flow, self.fhigh)
-                        range_spec = inspiral_range_psd(asd**2)
-                        ranges.append((range_spec * range_spec.df.value) ** (0.5))
+                        asd = (Spectrum(x.value, frequencies=spec.frequencies,
+                                        channel=spec.channel, unit=spec.unit)
+                               .crop(self.flow, self.fhigh))
+                        range_spec = inspiral_range_psd(asd ** 2)
+                        ranges.append(
+                            (range_spec * range_spec.df.value) ** 0.5)
                     self.data[channel].append(type(spec).from_spectra(
                         *ranges, epoch=spec.epoch, dt=spec.dt))
             pickleHandle = open(pickleFile, 'w')
@@ -314,7 +319,8 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
             if len(self.data.keys()) == 1:  # if only one channel given then proceed
                 channel = self.data.keys()[0]
             else:
-                raise UserException("Only one channel is accepted for BNSrange Monitor")
+                raise UserException(
+                    "Only one channel is accepted for BNSrange Monitor")
 
             # plot spectrograms
             newSpectrogram = self.data[channel]
@@ -333,19 +339,24 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                         rangIntegrand = spec ** 2
                         rangeTimeseriesSquare = rangIntegrand.sum(axis=1)
                         self.logger.debug(
-                            'Estimated BNS range of {0}'.format(rangeTimeseriesSquare ** 0.5))
-                        rangeTimeseries = TimeSeries(rangeTimeseriesSquare.data ** 0.5,
-                                                     epoch=rangeTimeseriesSquare.epoch,
-                                                     name=rangeTimeseriesSquare.name,
-                                                     sample_rate=1.0 / rangeTimeseriesSquare.dt.value,
-                                                     unit='Mpc', channel=rangeTimeseriesSquare.name)
+                            'Estimated BNS range of {0}'.format(
+                                rangeTimeseriesSquare ** 0.5))
+                        rangeTimeseries = TimeSeries(
+                            rangeTimeseriesSquare.data ** 0.5,
+                            epoch=rangeTimeseriesSquare.epoch,
+                            name=rangeTimeseriesSquare.name,
+                            sample_rate=1.0 / rangeTimeseriesSquare.dt.value,
+                            unit='Mpc', channel=rangeTimeseriesSquare.name)
                         # coll = ax.plot(rangeTimeseries, label=label, color='b',
                         coll = ax.plot(rangeTimeseries, color='b',
                                        linewidth=3.0, marker='o')
                 elif plotType == "spectrogram":
                     # coll = ax.plot(newSpectrogram, label=label, **pparams)
                     for spec in newSpectrogram:
-                        coll = ax.plot(spec, **pparams)
+                        coll = ax.plot(spec.copy(), **pparams)
+                        # the .copy() is necessary for some reason to avoid a
+                        #  weird error in the .sum at line 343 that happens if
+                        # the spectrogram is plotted before the timeseries
                     try:
                         coloraxes[i]
                     except IndexError:
@@ -353,7 +364,8 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                         for key in self.params['colorbar']:
                             try:
                                 if self.params['colorbar'][key][i]:
-                                    cbparams[key] = self.params['colorbar'][key][i]
+                                    cbparams[key] = self.params[
+                                        'colorbar'][key][i]
                             except IndexError:
                                 pass
                         try:
