@@ -111,6 +111,12 @@ class SpectrogramBuffer(DataBuffer):
                         raise ZeroDivisionError("FFT length is 0")
                     else:
                         raise
+                except ValueError:
+                    self.logger.error('TimeSeries span: {0},'
+                                      ' TimeSeries length: {1}, Stride: {2}'
+                                      .format(ts.span, ts.span[-1] - ts.span[0]
+                                              , stride[channel]))
+                    raise
                 if hasattr(channel,
                            'resample') and channel.resample is not None:
                     nyq = float(channel.resample) / 2.
@@ -210,7 +216,6 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         self.buffer.channels = self.spectrograms.channels
 
         # reset buffer duration to store a single stride
-        # self.duration = self.buffer.duration
         self.buffer.duration = kwargs['interval']
 
         if ratio is not None:
@@ -276,8 +281,16 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         """
         # data buffer will return dict of 1-item lists, so reform to tsd
         pickleFile = 'rangefile'  # to store data at each step
-        new = TimeSeriesDict((key, val[0]) for key, val in new.iteritems())
-        self.epoch = new[self.channels[0]].epoch.gps + self.stride
+        # self.epoch = new[self.channels[0]].epoch.gps + self.stride
+        # check that the stored epoch is bigger then the first buffered data
+        if new[self.channels[0]][0].span[0] > self.epoch:
+            s = ('The available data starts at gps {0} '
+                 'which. is after the end of the last spectrogram(gps {1})'
+                 ': a segment is missing and will be skipped!')
+            self.logger.warning(s.format(new[self.channels[0]][0].span[0],
+                                         self.epoch))
+            self.epoch = new[self.channels[0]][0].span[0]
+        # load the saved spectrograms if there are any # TODO: rework this
         if not self.spectrograms.data:
             try:
                 pickleHandle = open(pickleFile, 'r')
@@ -286,8 +299,14 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                 self.spectrograms.data[self.channels[0]] = tempSpect
             except:
                 pass
-        self.spectrograms.append(self.spectrograms.from_timeseriesdict(new))
-        self.spectrograms.crop(self.epoch - self.duration)
+        while new[self.channels[0]][0].span[-1] >= (self.epoch + self.stride):
+            _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
+                                                    self.stride))
+                                  for key, val in new.iteritems())
+            self.spectrograms.append(
+                self.spectrograms.from_timeseriesdict(_new))
+            self.epoch += self.stride
+            self.spectrograms.crop(self.epoch - self.duration)
         self.data = type(self.spectrograms.data)()
         if self.spectrograms.data:
             for channel in self.channels:  # TODO: any way to avoid looping since there is only one channel?
@@ -300,12 +319,13 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                                .crop(self.flow, self.fhigh))
                         range_spec = inspiral_range_psd(asd ** 2)
                         ranges.append(
-                            (range_spec * range_spec.df.value) ** 0.5)
+                            (range_spec * range_spec.df) ** 0.5)
                     self.data[channel].append(type(spec).from_spectra(
                         *ranges, epoch=spec.epoch, dt=spec.dt))
             pickleHandle = open(pickleFile, 'w')
             pickle.dump(self.spectrograms.data[channel], pickleHandle)
             pickleHandle.close()
+        self.epoch = self.data[self.channels[0]][-1].span[-1]
         return self.data
 
     def refresh(self):
@@ -390,7 +410,7 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
 
             self.logger.debug('Figure data updated')
             # add suptitle
-            if not 'suptitle' in self.params['init']:
+            if 'suptitle' not in self.params['init']:
                 prefix = ('FFT length: %ss, Overlap: %ss, Stride: %ss -- '
                           % (self.fftlength, self.overlap, self.stride))
                 utc = re.sub('\.0+', '',
