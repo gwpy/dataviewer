@@ -219,16 +219,22 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         This method only applies a ratio, if configured
         """
-        spec_epoch = self.epoch  # TODO: brutto dipende dal primo dato vs inizio del programma
-        # not so fast, biatch
-        while new[self.channels[0]][0].span[-1] >= (spec_epoch + self.stride):
+        # check that the stored epoch is bigger then the first buffered data
+        if new[self.channels[0]][0].span[0] > self.epoch:  # TODO: what if new is discontiguous?
+            s = ('The available data starts at gps {0} '
+                 'which. is after the end of the last spectrogram(gps {1})'
+                 ': a segment is missing and will be skipped!')
+            self.logger.warning(s.format(new[self.channels[0]].span[0],
+                                         self.epoch))
+            self.epoch = new[self.channels[0]][0].span[0]
+        while new[self.channels[0]][0].span[-1] >= (self.epoch + self.stride):
             # data buffer will return dict of 1-item lists, so reform to tsd
-            _new = TimeSeriesDict((key, val[0].crop(spec_epoch, spec_epoch +
+            _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
                                                     self.stride))
                                   for key, val in new.iteritems())
             self.spectrograms.append(
                 self.spectrograms.from_timeseriesdict(_new))
-            spec_epoch += self.stride
+            self.epoch += self.stride
         self.spectrograms.crop(self.epoch - self.duration)
         self.data = type(self.spectrograms.data)()
         for channel in self.channels:
