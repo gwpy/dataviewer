@@ -338,7 +338,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
             if new[channel].span[0] > fftepoch:
                 s = ('The available data starts at gps {0} '
-                     'which. is after the end of the last spectrogram(gps {1})'
+                     'which. is after the end of the last spectrum(gps {1})'
                      ': a segment is missing and will be skipped!')
                 self.logger.warning(s.format(new[channel].span[0], fftepoch))
                 fftepoch = new[channel].span[0]
