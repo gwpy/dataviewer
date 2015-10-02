@@ -57,7 +57,7 @@ PARAMS['legend'] = ['bbox_to_anchor', 'loc', 'borderaxespad', 'ncol']
 PARAMS['colorbar'] = ['log', 'clim', 'label']
 
 FIGURE_PARAMS = ['title', 'subtitle']
-AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel']
+AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel', 'xscale', 'yscale']
 
 
 
@@ -249,7 +249,8 @@ class Monitor(TimedAnimation):
                         isinstance(val[0], (list, tuple, basestring))):
                     val = [val] * len(self._fig.axes)
                 for ax, v in zip(self._fig.axes, val):
-                    getattr(ax, 'set_%s' % key)(v)
+                    if not(isinstance(v, basestring) and v in ''):
+                        getattr(ax, 'set_%s' % key)(v)
             else:
                 for ax in self._fig.axes:
                     getattr(ax, 'set_%s' % key)(val)

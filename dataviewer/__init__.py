@@ -45,5 +45,6 @@ from .registry import *
 from .timeseries import *
 from .spectrum import *
 from .spectrogram import *
+from .supergram import *
 from .bnsrange import *
 from .bnsfromspectra import *
