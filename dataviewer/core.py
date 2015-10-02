@@ -246,7 +246,7 @@ class Monitor(TimedAnimation):
                         getattr(ax, 'set_%s' % key)(v)
             elif key in AXES_PARAMS:
                 if not (isinstance(val, (list, tuple)) and
-                        isinstance(val[0], (list, tuple))):
+                        isinstance(val[0], (list, tuple, basestring))):
                     val = [val] * len(self._fig.axes)
                 for ax, v in zip(self._fig.axes, val):
                     getattr(ax, 'set_%s' % key)(v)
