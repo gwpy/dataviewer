@@ -224,14 +224,19 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             s = ('The available data starts at gps {0} '
                  'which. is after the end of the last spectrogram(gps {1})'
                  ': a segment is missing and will be skipped!')
-            self.logger.warning(s.format(new[self.channels[0]].span[0],
+            self.logger.warning(s.format(new[self.channels[0]][0].span[0],
                                          self.epoch))
+            self.epoch = new[self.channels[0]][0].span[0]
+        # be sure that the first cycle is syncronized with the buffer
+        if not self.spectrograms.data:
             self.epoch = new[self.channels[0]][0].span[0]
         while new[self.channels[0]][0].span[-1] >= (self.epoch + self.stride):
             # data buffer will return dict of 1-item lists, so reform to tsd
             _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
                                                     self.stride))
                                   for key, val in new.iteritems())
+            self.logger.debug('Spectrogram calculated at epoch {0}'
+                              .format(self.epoch))
             self.spectrograms.append(
                 self.spectrograms.from_timeseriesdict(_new))
             self.epoch += self.stride
