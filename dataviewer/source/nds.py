@@ -19,20 +19,21 @@
 """This module defines the `NDSDataBuffer`
 """
 
-import nds2
+
 
 from numpy import ceil
-from gwpy.detector import Channel
 from gwpy.io import nds as ndsio
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 from fractions import gcd
+from time import sleep
+from gwpy.time import tconvert
 
 from .. import version
 from ..log import Logger
 from . import (register_data_source, register_data_iterator)
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
-
+__version__ = version.version
 
 class NDSDataSource(object):
     """A data holder for fetching from NDS
@@ -198,10 +199,14 @@ class NDSDataIterator(NDSDataSource):
                 self.logger.error('RuntimeError caught: %s' % str(e))
                 if attempts < self.max_attempts:
                     attempts += 1
+                    wait_time = attempts / 4 + 1
                     self.logger.warning(
                         'Attempting to reconnect to the nds server... {0}/{1}'
-                            .format(attempts, self.max_attempts))
+                        .format(attempts, self.max_attempts))
+                    self.logger.warning('Next attempt in minimum {0} seconds'
+                                        .format(wait_time))
                     self.restart()
+                    sleep(wait_time - tconvert('now') % wait_time)
                     continue
                 else:
                     self.logger.critical(
