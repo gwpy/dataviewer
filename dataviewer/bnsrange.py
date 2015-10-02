@@ -318,7 +318,7 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                 self.data[channel] = type(self.spectrograms.data[channel])()
                 for spec in self.spectrograms.data[channel]:
                     ranges = []
-                    for x in spec: # TODO: am I doing this for the whole spectrogram every time?
+                    for x in spec:
                         asd = (Spectrum(x.value, frequencies=spec.frequencies,
                                         channel=spec.channel, unit=spec.unit)
                                .crop(self.flow, self.fhigh))
