@@ -34,8 +34,7 @@ from .buffer import OrderedDict
 from .core import PARAMS
 from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor
-from IPython.terminal.embed import InteractiveShellEmbed
-import inspect
+
 import version
 from gwpy.astro.range import inspiral_range, inspiral_range_psd
 
@@ -46,16 +45,6 @@ __version__ = version.version
 
 
 
-#ipshell debugger during run
-def ipsh():
-    ipshell = InteractiveShellEmbed(banner1="risolvitore di problemi attivato")
-
-    frame = inspect.currentframe().f_back
-    msg   = 'Stopped at {0.f_code.co_filename} at line {0.f_lineno}'.format(frame)
-
-    # Go back one level!
-    # This is needed because the call to ipshell is inside the function ipsh()
-    ipshell(msg,stack_depth=2)
 
 
 __all__ = ['BNSMonitor']
