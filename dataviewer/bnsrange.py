@@ -293,14 +293,14 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         if not self.spectrograms.data:
             # be sure that the first cycle is syncronized with the buffer
             self.epoch = new[self.channels[0]][0].span[0]
-            try:
+           # try:
                 # load the saved spectrograms if there are any # TODO: rework this
-                pickleHandle = open(pickleFile, 'r')
-                tempSpect = pickle.load(pickleHandle)
-                pickleHandle.close()
-                self.spectrograms.data[self.channels[0]] = tempSpect
-            except:
-                pass
+             #   pickleHandle = open(pickleFile, 'r')
+             #   tempSpect = pickle.load(pickleHandle)
+              #  pickleHandle.close()
+              #  self.spectrograms.data[self.channels[0]] = tempSpect
+           # except:
+            #    pass
         while new[self.channels[0]][0].span[-1] >= (self.epoch + self.stride):
             # data buffer will return dict of 1-item lists, so reform to tsd
             _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
@@ -327,9 +327,9 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                             (range_spec * range_spec.df) ** 0.5)
                     self.data[channel].append(type(spec).from_spectra(
                         *ranges, epoch=spec.epoch, dt=spec.dt))
-            pickleHandle = open(pickleFile, 'w')
-            pickle.dump(self.spectrograms.data[channel], pickleHandle)
-            pickleHandle.close()
+          #  pickleHandle = open(pickleFile, 'w')
+           # pickle.dump(self.spectrograms.data[channel], pickleHandle)
+            #pickleHandle.close()
         self.epoch = self.data[self.channels[0]][-1].span[-1]
         return self.data
 
