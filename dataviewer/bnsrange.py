@@ -348,9 +348,16 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                     "Only one channel is accepted for BNSrange Monitor")
 
             # plot spectrograms
-            newSpectrogram = self.data[channel]
+            #newSpectrogram = self.data[channel]
             for i, plotType in enumerate(self.plots):
                 ax = next(axes)
+                if len(ax.collections):
+                    newSpectrogram = self.data[channel][-1:]
+                # remove old spectrogram
+                    if float(abs(newSpectrogram[-1].span)) > self.buffer.interval:
+                        ax.collections.remove(ax.collections[-1])
+                else:
+                    newSpectrogram = self.data[channel]
                 # plot new data
                 pparams = {}
                 for key in params:
