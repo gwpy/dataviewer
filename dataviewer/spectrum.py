@@ -115,15 +115,15 @@ class SpectrumMonitor(TimeSeriesMonitor):
         ---------
         refs: `Spectrum`, `dict`, `tuple`, `list`
             Reference spectra. Can be:
-            - `Spectrum`: one single reference spectrum, label taken
+            -`Spectrum`: one single reference spectrum, label taken
             from name and needs to be unique
-            - 'dict': keys must be the path of the files containing the spectra,
+            -'dict': keys must be the path of the files containing the spectra,
             values must be dictionaries containing plot arguments, e.g.
                 refs = {'/path/to/file':{'label':'somelabel', ...}, ...}
-            - 'tuple': first element must be `Spectrum` object, second must be
+            -'tuple': first element must be `Spectrum` object, second must be
              dictionary containing plot arguments, e.g.
                 refs = ((refspectrum, {'color': 'r'}), ...)
-            - `list`: each element can be a `Spectrum` or a tuple following the
+            -'list`: each element can be a `Spectrum` or a tuple following the
             format outlined above.
         """
         if isinstance(ref, Spectrum):
@@ -234,7 +234,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
             # channel and reference spectra
             cha_spec = dict((i, self.spectra[self.channels[i]]) for
                             i in cha_ids)
-            ref_spec = dict((i, self._references.values()[i]['spectrum']) for i in ref_ids)
+            ref_spec = dict((i, self._references.values()[i]['spectrum'])
+                            for i in ref_ids)
 
             if self._flims is None:
                 # PREPARE CHANNELS
@@ -341,7 +342,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 fdata = new[channel].crop(fftepoch, fftepoch + self.fftlength)
                 fft = fdata.asd(self.fftlength, self.overlap, method=method,
                                 **self.window)
-                fft.epoch = fdata.epoch # is this really necessary? why doesn't the .asd method copy it?
+                # copy the epoch, necessary since .asd doesn't copy it yet
+                fft.epoch = fdata.epoch
                 self.logger.debug('%ds ASD calculated for %s'
                                   % (self.fftlength, str(channel)))
                 SPECTRA[channel] = (SPECTRA[channel] + [fft])[-self.averages:]
@@ -421,7 +423,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
             prefix = ('FFT length: %ss, Overlap: %ss, Averages: %d -- '
                       % (self.fftlength, self.overlap, self.averages))
             utc = re.sub('\.0+', '',
-                         Time(float(self.epoch), format='gps', scale='utc').iso)
+                         Time(float(self.epoch),
+                              format='gps', scale='utc').iso)
             suffix = 'Last updated: %s UTC (%s)' % (utc, self.epoch)
             self.suptitle = self._fig.suptitle(prefix + suffix)
         self.set_params('refresh')
