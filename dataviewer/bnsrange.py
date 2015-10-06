@@ -209,7 +209,7 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         if isinstance(self.stateChannel, str):
             self.stateChannel = (self.stateChannel,)
         if len(self.stateChannel) == 1:
-            stateDQ = caget(self.stateChannel[0])
+            stateDQ = caget(self.stateChannel[0])  # is this performed only one time?
         elif len(self.stateChannel) == 2:
             stateChannels = self.stateChannel[0].split(",")
             stateCondition = self.stateChannel[1].split(",")
@@ -372,11 +372,8 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                     for spec in newSpectrogram:
                         rangIntegrand = spec ** 2
                         rangeTimeseriesSquare = rangIntegrand.sum(axis=1)
-                        self.logger.debug(
-                            'Estimated BNS range of {0}'.format(
-                                rangeTimeseriesSquare ** 0.5))
                         rangeTimeseries = TimeSeries(
-                            rangeTimeseriesSquare.data ** 0.5,
+                            rangeTimeseriesSquare.value ** 0.5,
                             epoch=rangeTimeseriesSquare.epoch,
                             name=rangeTimeseriesSquare.name,
                             sample_rate=1.0 / rangeTimeseriesSquare.dt.value,
