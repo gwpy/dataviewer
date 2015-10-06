@@ -102,11 +102,18 @@ class SpectrogramBuffer(DataBuffer):
         if stateDQ:
             for channel, ts in zip(self.channels, tsd.values()):
                 try:
-                    specgram = ts.spectrogram(stride[channel],
-                                              fftlength=fftlength[channel],
-                                              overlap=overlap[channel],
-                                              method=self.method,
-                                              window=self.window) ** (1 / 2.)
+                    #specgram = ts.spectrogram(stride[channel],
+                     #                         fftlength=fftlength[channel],
+                      #                        overlap=overlap[channel],
+                       #                       method=self.method,
+                        #                      window=self.window) ** (1 / 2.)
+                    spec = ts.asd(fftlength=fftlength[channel],
+                                  overlap=overlap[channel],
+                                  method=self.method,
+                                  window=self.window)\
+                        .crop(flow[channel], fhigh[channel])
+                    spec.epoch = ts.epoch
+                # todo: update these exceptions for the spectrum
                 except ZeroDivisionError:
                     if stride[channel] == 0:
                         raise ZeroDivisionError("Spectrogram stride is 0")
@@ -124,20 +131,20 @@ class SpectrogramBuffer(DataBuffer):
                 if hasattr(channel,
                            'resample') and channel.resample is not None:
                     nyq = float(channel.resample) / 2.
-                    nyqidx = int(nyq / specgram.df.value)
-                    specgram = specgram[:, :nyqidx]
+                    nyqidx = int(nyq / spec.df.value)
+                    spec = spec[:nyqidx]
                 if channel in filter and filter[channel]:
-                    specgram = specgram.filter(*filter[channel]).copy()
-                asd = (Spectrum(specgram.value[-1, :],
-                                frequencies=specgram.frequencies,
-                                channel=specgram.channel,
-                                unit=specgram.unit)) \
-                    .crop(flow[channel], fhigh[channel])
-                range_spec = inspiral_range_psd(asd ** 2)
+                    spec = spec.filter(*filter[channel]).copy()
+                #asd = (Spectrum(specgram.value[-1, :],
+                #                frequencies=specgram.frequencies,
+                #                channel=specgram.channel,
+                #                unit=specgram.unit)) \
+                #    .crop(flow[channel], fhigh[channel])
+                range_spec = inspiral_range_psd(spec ** 2)
                 ranges = (range_spec * range_spec.df) ** 0.5
-                data[channel] = type(specgram).from_spectra(
-                    ranges, epoch=specgram.epoch, dt=specgram.dt,
-                    frequencies=asd.frequencies)
+                data[channel] = Spectrogram.from_spectra(
+                    ranges, epoch=spec.epoch, dt=self.stride,
+                    frequencies=spec.frequencies)
         return data
 
 
