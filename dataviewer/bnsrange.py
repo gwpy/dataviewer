@@ -109,8 +109,7 @@ class SpectrogramBuffer(DataBuffer):
                         #                      window=self.window) ** (1 / 2.)
                     spec = ts.asd(fftlength=fftlength[channel],
                                   overlap=overlap[channel],
-                                  method=self.method,
-                                  window=self.window)\
+                                  method=self.method)\
                         .crop(flow[channel], fhigh[channel])
                     spec.epoch = ts.epoch
                 # todo: update these exceptions for the spectrum
@@ -143,7 +142,7 @@ class SpectrogramBuffer(DataBuffer):
                 range_spec = inspiral_range_psd(spec ** 2)
                 ranges = (range_spec * range_spec.df) ** 0.5
                 data[channel] = Spectrogram.from_spectra(
-                    ranges, epoch=spec.epoch, dt=self.stride,
+                    ranges, epoch=spec.epoch, dt=self.stride[channel],
                     frequencies=spec.frequencies)
         return data
 
