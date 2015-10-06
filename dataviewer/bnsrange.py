@@ -25,16 +25,12 @@ import re
 from itertools import (cycle, izip_longest)
 
 from astropy.time import Time
-
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
 from gwpy.spectrogram import (Spectrogram, SpectrogramList)
 from gwpy.plotter import (SpectrogramPlot, TimeSeriesAxes)
 from gwpy.spectrum import Spectrum
 from gwpy.astro.range import inspiral_range_psd
 
-import warnings
-
-warnings.filterwarnings("ignore")
 import pickle
 
 from . import version
@@ -63,13 +59,18 @@ class SpectrogramBuffer(DataBuffer):
     ListClass = SpectrogramList
 
     def __init__(self, channels, stride=1, fftlength=1, overlap=0,
-                 method='welch', filter=None, **kwargs):
+                 method='welch', filter=None, fhigh=8000, flow=0,
+                 window=None, **kwargs):
         super(SpectrogramBuffer, self).__init__(channels, **kwargs)
         self.method = method
+        self.window = window
+        # todo: maybe it is better to pass some of these kwargs as kwargs to ts.spectrogram
         self.stride = self._param_dict(stride)
         self.fftlength = self._param_dict(fftlength)
         self.overlap = self._param_dict(overlap)
         self.filter = self._param_dict(filter)
+        self.fhigh = self._param_dict(fhigh)
+        self.flow = self._param_dict(flow)
 
     def _param_dict(self, param):
         # format parameters
@@ -89,11 +90,12 @@ class SpectrogramBuffer(DataBuffer):
 
     def from_timeseriesdict(self, tsd, **kwargs):
         # format parameters
-        method = kwargs.pop('method', self.method)
         stride = self._param_dict(kwargs.pop('stride', self.stride))
         fftlength = self._param_dict(kwargs.pop('fftlength', self.fftlength))
         overlap = self._param_dict(kwargs.pop('overlap', self.overlap))
         filter = self._param_dict(kwargs.pop('filter', self.filter))
+        fhigh = self._param_dict(kwargs.pop('fhigh', self.fhigh))
+        flow = self._param_dict(kwargs.pop('flow', self.flow))
 
         # calculate spectrograms only if state conditon(s) is satisfied
         data = self.DictClass()
@@ -102,8 +104,9 @@ class SpectrogramBuffer(DataBuffer):
                 try:
                     specgram = ts.spectrogram(stride[channel],
                                               fftlength=fftlength[channel],
-                                              overlap=overlap[channel]) ** (
-                                   1 / 2.)
+                                              overlap=overlap[channel],
+                                              method=self.method,
+                                              window=self.window) ** (1 / 2.)
                 except ZeroDivisionError:
                     if stride[channel] == 0:
                         raise ZeroDivisionError("Spectrogram stride is 0")
@@ -114,8 +117,9 @@ class SpectrogramBuffer(DataBuffer):
                 except ValueError:
                     self.logger.error('TimeSeries span: {0},'
                                       ' TimeSeries length: {1}, Stride: {2}'
-                                      .format(ts.span, ts.span[-1] - ts.span[0]
-                                              , stride[channel]))
+                                      .format(ts.span,
+                                              ts.span[-1] - ts.span[0],
+                                              stride[channel]))
                     raise
                 if hasattr(channel,
                            'resample') and channel.resample is not None:
@@ -124,14 +128,22 @@ class SpectrogramBuffer(DataBuffer):
                     specgram = specgram[:, :nyqidx]
                 if channel in filter and filter[channel]:
                     specgram = specgram.filter(*filter[channel]).copy()
-                data[channel] = specgram
-
+                asd = (Spectrum(specgram.value[-1, :],
+                                frequencies=specgram.frequencies,
+                                channel=specgram.channel,
+                                unit=specgram.unit)) \
+                    .crop(flow[channel], fhigh[channel])
+                range_spec = inspiral_range_psd(asd ** 2)
+                ranges = (range_spec * range_spec.df) ** 0.5
+                data[channel] = type(specgram).from_spectra(
+                    ranges, epoch=specgram.epoch, dt=specgram.dt,
+                    frequencies=asd.frequencies)
         return data
 
 
 class SpectrogramIterator(SpectrogramBuffer):
     def _next(self):
-        new = super(SpectrogramIterator, self)._next()
+        new = super(SpectrogramIterator, self)._next()  #todo:  is this iterator even used?
         return self.from_timeseriesdict(
             new, method=self.method, stride=self.stride,
             fftlength=self.fftlength, overlap=self.overlap, filter=self.filter)
@@ -166,7 +178,8 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         ratio = kwargs.pop('ratio', None)
         resample = kwargs.pop('resample', None)
         kwargs.setdefault('interval', stride)
-
+        flow = kwargs.pop('flow')
+        fhigh = kwargs.pop('fhigh')
         if kwargs['interval'] % stride:
             raise ValueError("%s interval must be exact multiple of the stride"
                              % type(self).__name__)
@@ -174,7 +187,7 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         # build 'data' as SpectrogramBuffer
         self.spectrograms = SpectrogramIterator(
             channels, stride=stride, method=method, overlap=overlap,
-            fftlength=fftlength)
+            fftlength=fftlength, flow=flow, fhigh=fhigh, window=window)
         if isinstance(filter, list):
             self.spectrograms.filter = dict(zip(self.spectrograms.channels,
                                                 filter))
@@ -188,18 +201,13 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         # build monitor
         kwargs.setdefault('yscale', 'log')
         kwargs.setdefault('gap', 'raise')
-        self.flow = kwargs.pop('flow')
-        self.fhigh = kwargs.pop('fhigh')
         self.plots = kwargs.pop('plots')
         if isinstance(self.plots, str):
             self.plots = (self.plots,)
-        ## define state vector
-        try:
-            self.stateChannel = kwargs.pop('statechannel')
-            if isinstance(self.stateChannel, str):
-                self.stateChannel = (self.stateChannel,)
-        except:
-            self.stateChannel = ''
+        # define state vector
+        self.stateChannel = kwargs.pop('statechannel', [])
+        if isinstance(self.stateChannel, str):
+            self.stateChannel = (self.stateChannel,)
         if len(self.stateChannel) == 1:
             stateDQ = caget(self.stateChannel[0])
         elif len(self.stateChannel) == 2:
@@ -294,7 +302,7 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
             # be sure that the first cycle is syncronized with the buffer
             self.epoch = new[self.channels[0]][0].span[0]
             try:
-            #    load the saved spectrograms if there are any # TODO: rework this
+                #    load the saved spectrograms if there are any # TODO: rework this
                 pickleHandle = open(pickleFile, 'r')
                 tempSpect = pickle.load(pickleHandle)
                 pickleHandle.close()
@@ -315,23 +323,13 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
             self.epoch += self.stride
             self.spectrograms.crop(self.epoch - self.duration)
         self.data = type(self.spectrograms.data)()
-        if self.spectrograms.data:
+        if self.spectrograms.data:  # is this if necessary?
             for channel in self.channels:  # TODO: any way to avoid looping since there is only one channel?
-                self.data[channel] = type(self.spectrograms.data[channel])()
-                for spec in self.spectrograms.data[channel]:
-                    ranges = []
-                    for x in spec:
-                        asd = (Spectrum(x.value, frequencies=spec.frequencies,
-                                        channel=spec.channel, unit=spec.unit)
-                               .crop(self.flow, self.fhigh))
-                        range_spec = inspiral_range_psd(asd ** 2)
-                        ranges.append(
-                            (range_spec * range_spec.df) ** 0.5)
-                    self.data[channel].append(type(spec).from_spectra(
-                        *ranges, epoch=spec.epoch, dt=spec.dt))
-            pickleHandle = open(pickleFile, 'w')
-            pickle.dump(self.spectrograms.data[channel], pickleHandle)
-            pickleHandle.close()
+                self.data[channel] = type(self.spectrograms.data[channel])(
+                    *self.spectrograms.data[channel])
+                pickleHandle = open(pickleFile, 'w')
+                pickle.dump(self.spectrograms.data[channel], pickleHandle)
+                pickleHandle.close()
         self.epoch = self.data[self.channels[0]][-1].span[-1]
         return self.data
 
@@ -343,20 +341,22 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
             axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
             coloraxes = self._fig.colorbars
             params = self.params['draw']
-            if len(self.data.keys()) == 1:  # if only one channel given then proceed
+            # if only one channel given then proceed
+            if len(self.data.keys()) == 1:
                 channel = self.data.keys()[0]
             else:
                 raise UserException(
                     "Only one channel is accepted for BNSrange Monitor")
 
             # plot spectrograms
-            #newSpectrogram = self.data[channel]
+            # newSpectrogram = self.data[channel]
             for i, plotType in enumerate(self.plots):
                 ax = next(axes)
                 if len(ax.collections):
                     newSpectrogram = self.data[channel][-1:]
-                # remove old spectrogram
-                    if float(abs(newSpectrogram[-1].span)) > self.buffer.interval:
+                    # remove old spectrogram
+                    if float(abs(
+                            newSpectrogram[-1].span)) > self.buffer.interval:
                         ax.collections.remove(ax.collections[-1])
                 else:
                     newSpectrogram = self.data[channel]
@@ -381,7 +381,6 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
                             name=rangeTimeseriesSquare.name,
                             sample_rate=1.0 / rangeTimeseriesSquare.dt.value,
                             unit='Mpc', channel=rangeTimeseriesSquare.name)
-                        # coll = ax.plot(rangeTimeseries, label=label, color='b',
                         coll = ax.plot(rangeTimeseries, color='b',
                                        linewidth=3.0, marker='o')
                 elif plotType == "spectrogram":
