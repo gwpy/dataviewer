@@ -78,7 +78,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.spectra = OrderedDict()
         self._flims = None
 
-
         # add references
         self._references = OrderedDict()
         if 'reference' in kwargs:
@@ -86,7 +85,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # add combinations
         self.combinations = OrderedDict()
         if 'combination' in kwargs:
-             self.add_combination(kwargs.pop('combination'), channels)
+            self.add_combination(kwargs.pop('combination'))
 
         # parse filters
         filters = kwargs.pop('filters', kwargs.pop('filter', []))
@@ -115,15 +114,15 @@ class SpectrumMonitor(TimeSeriesMonitor):
         ---------
         refs: `Spectrum`, `dict`, `tuple`, `list`
             Reference spectra. Can be:
-            - `Spectrum`: one single reference spectrum, label taken
+            -`Spectrum`: one single reference spectrum, label taken
             from name and needs to be unique
-            - 'dict':keys must be the path of the files containing the spectra,
+            -'dict': keys must be the path of the files containing the spectra,
             values must be dictionaries containing plot arguments, e.g.
                 refs = {'/path/to/file':{'label':'somelabel', ...}, ...}
-            - 'tuple': first element must be `Spectrum` object, second must be
+            -'tuple': first element must be `Spectrum` object, second must be
              dictionary containing plot arguments, e.g.
                 refs = ((refspectrum, {'color': 'r'}), ...)
-            - `list`: each element can be a `Spectrum` or a tuple following the
+            -'list`: each element can be a `Spectrum` or a tuple following the
             format outlined above.
         """
         if isinstance(ref, Spectrum):
@@ -143,9 +142,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         else:
             raise ValueError('Invalid reference syntax.')
 
-    def add_combination(self, combs, channels):
-
-        nch = len(channels)
+    def add_combination(self, combs):
 
         # parse combinations
         if combs is None:
@@ -187,7 +184,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         elif isinstance(combs, (list, tuple)):
             for c in combs:
                 if isinstance(c, basestring):
-                    self.combinations[self.parse_combination(c)] = {'label':c}
+                    self.combinations[self.parse_combination(c)] = {'label': c}
                 elif isinstance(c, tuple) and len(c) == 2:
                     k = combs[0]
                     v = combs[1]
@@ -223,8 +220,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         try:
             ncha = len(self.channels)
-            if any([ci >= ncha for ci in cha_ids]) or any(
-                [ri >= nref for ri in ref_ids]):
+            if any([ci >= ncha for ci in cha_ids]) or\
+                    any([ri >= nref for ri in ref_ids]):
                 raise IndexError('Combination out of bounds.')
         except AttributeError:
             pass
@@ -350,7 +347,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 fdata = new[channel].crop(fftepoch, fftepoch + self.fftlength)
                 fft = fdata.asd(self.fftlength, self.overlap, method=method,
                                 **self.window)
-                fft.epoch = fdata.epoch # is this really necessary? why doesn't the .asd method copy it?
+                # copy the epoch, necessary since .asd doesn't copy it yet
+                fft.epoch = fdata.epoch
                 self.logger.debug('%ds ASD calculated for %s'
                                   % (self.fftlength, str(channel)))
                 SPECTRA[channel] = (SPECTRA[channel] + [fft])[-self.averages:]
@@ -426,11 +424,12 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         self.logger.debug('Figure data updated')
         # add suptitle
-        if not 'suptitle' in self.params['init']:
+        if 'suptitle' not in self.params['init']:
             prefix = ('FFT length: %ss, Overlap: %ss, Averages: %d -- '
                       % (self.fftlength, self.overlap, self.averages))
             utc = re.sub('\.0+', '',
-                         Time(float(self.epoch), format='gps', scale='utc').iso)
+                         Time(float(self.epoch),
+                              format='gps', scale='utc').iso)
             suffix = 'Last updated: %s UTC (%s)' % (utc, self.epoch)
             self.suptitle = self._fig.suptitle(prefix + suffix)
         self.set_params('refresh')
@@ -452,8 +451,8 @@ def parseparams(deflabel, param_in):
                     m = '.'
                 raise ValueError('Unsupported parameter %r for'
                                  'single line plotting%s' % (p, m))
-    elif isinstance(param_in, list)\
-    and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
+    elif isinstance(param_in, list) \
+            and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
         for (p, v) in param_in:
             if p in PARAMS['draw']+['label']:
                 param_out[p] = v
