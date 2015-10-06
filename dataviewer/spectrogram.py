@@ -235,7 +235,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
                                                     self.stride))
                                   for key, val in new.iteritems())
-            self.logger.debug('Calculating spectrogram from epoch {0}'
+            self.logger.debug('Computing spectrogram from epoch {0}'
                               .format(self.epoch))
             self.spectrograms.append(
                 self.spectrograms.from_timeseriesdict(_new))
