@@ -28,7 +28,7 @@ import numpy
 
 from astropy.time import Time
 
-from gwpy.plotter import (SpectrumPlot, SpectrumAxes, rcParams)
+from gwpy.plotter import (SpectrumPlot, SpectrumAxes)
 from gwpy.spectrum.core import Spectrum
 
 from . import version
@@ -78,7 +78,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.spectra = OrderedDict()
         self._flims = None
 
-
         # add references
         self._references = OrderedDict()
         if 'reference' in kwargs:
@@ -86,7 +85,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # add combinations
         self.combinations = OrderedDict()
         if 'combination' in kwargs:
-             self.add_combination(kwargs.pop('combination'), channels)
+            self.add_combination(kwargs.pop('combination'))
 
         # parse filters
         filters = kwargs.pop('filters', kwargs.pop('filter', []))
@@ -143,9 +142,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         else:
             raise ValueError('Invalid reference syntax.')
 
-    def add_combination(self, combs, channels):
-
-        nch = len(channels)
+    def add_combination(self, combs):
 
         # parse combinations
         if combs is None:
@@ -187,7 +184,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         elif isinstance(combs, (list, tuple)):
             for c in combs:
                 if isinstance(c, basestring):
-                    self.combinations[self.parse_combination(c)] = {'label':c}
+                    self.combinations[self.parse_combination(c)] = {'label': c}
                 elif isinstance(c, tuple) and len(c) == 2:
                     k = combs[0]
                     v = combs[1]
@@ -223,8 +220,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         try:
             ncha = len(self.channels)
-            if any([ci >= ncha for ci in cha_ids]) or any(
-                [ri >= nref for ri in ref_ids]):
+            if any([ci >= ncha for ci in cha_ids]) or\
+                    any([ri >= nref for ri in ref_ids]):
                 raise IndexError('Combination out of bounds.')
         except AttributeError:
             pass
@@ -419,7 +416,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         self.logger.debug('Figure data updated')
         # add suptitle
-        if not 'suptitle' in self.params['init']:
+        if 'suptitle' not in self.params['init']:
             prefix = ('FFT length: %ss, Overlap: %ss, Averages: %d -- '
                       % (self.fftlength, self.overlap, self.averages))
             utc = re.sub('\.0+', '',
@@ -446,8 +443,8 @@ def parseparams(deflabel, param_in):
                     m = '.'
                 raise ValueError('Unsupported parameter %r for'
                                  'single line plotting%s' % (p, m))
-    elif isinstance(param_in, list)\
-    and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
+    elif isinstance(param_in, list) \
+            and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
         for (p, v) in param_in:
             if p in PARAMS['draw']+['label']:
                 param_out[p] = v
