@@ -69,6 +69,7 @@ class Logger(logging.Logger):
             super(Logger, self).__init__(name, level=level)
         except TypeError:
             logging.Logger.__init__(self, name, level=level)
+        logging.captureWarnings(True)
         colorformatter = ColoredFormatter(self.FORMAT.format(system=system),
                                           datefmt=datefmt)
         console = logging.StreamHandler()
