@@ -175,9 +175,9 @@ def from_ini(filepath, ifo=None):
             cparams[param].append(val)
 
     # get reference parameters
-    # reference parameters will be sent to the monitor in a dictionary with the path
-    # of each reference as keys and with the name and the other parameters as a dictionary
-    # for each key
+    # reference parameters will be sent to the monitor in a dictionary
+    #  with the path of each reference as keys and with the name and the other
+    # parameters as a dictionary for each key
 
     rparams = OrderedDict()
     for reference in references:
@@ -196,15 +196,19 @@ def from_ini(filepath, ifo=None):
                         if os.path.splitext(f)[1] in ['.txt', '.dat', '.gz']:
                             refpath += f
                             rparamsi.setdefault(
-                                'label', os.path.basename(refpath).split('.')[0].replace('_', r' '))
+                                'label', os.path.basename(refpath).split('.')
+                                [0].replace('_', r' '))
                             rparams[refpath] = rparamsi
 
                 else:
                     rparamsi.setdefault(
-                        'label', os.path.basename(refpath).split('.')[0].replace('_', r' '))
+                        'label', os.path.basename(refpath).split('.')[0]
+                            .replace('_', r' '))
                     rparams[refpath] = rparamsi
             except NameError:
-                raise ValueError('Cannot load reference {0} plot if no parameter "path" is defined'.format(reference))
+                raise ValueError('Cannot load reference {0} plot if no '
+                                 'parameter "path" is defined'
+                                 .format(reference))
 
     # get combination parameters # IN PROGRESS
     combparams = OrderedDict()
