@@ -59,11 +59,13 @@ class SpectrogramBuffer(DataBuffer):
     ListClass = SpectrogramList
 
     def __init__(self, channels, stride=1, fftlength=1, overlap=0,
-                 method='welch', filter=None, fhigh=8000, flow=0,
-                 window=None, **kwargs):
+                 method='welch', filter=None, fhigh=8000, flow=0, **kwargs):
         super(SpectrogramBuffer, self).__init__(channels, **kwargs)
         self.method = method
-        self.window = window
+        if 'window' in kwargs:
+            self.window = {'window': kwargs.pop('window')}
+        else:
+            self.window = {}
         # todo: maybe it is better to pass some of these kwargs as kwargs to ts.spectrogram
         self.stride = self._param_dict(stride)
         self.fftlength = self._param_dict(fftlength)
@@ -101,49 +103,33 @@ class SpectrogramBuffer(DataBuffer):
         data = self.DictClass()
         if stateDQ:
             for channel, ts in zip(self.channels, tsd.values()):
-                try:
-                    #specgram = ts.spectrogram(stride[channel],
-                     #                         fftlength=fftlength[channel],
-                      #                        overlap=overlap[channel],
-                       #                       method=self.method,
-                        #                      window=self.window) ** (1 / 2.)
-                    spec = ts.asd(fftlength=fftlength[channel],
-                                  overlap=overlap[channel],
-                                  method=self.method)\
-                        .crop(flow[channel], fhigh[channel])
-                    spec.epoch = ts.epoch
-                # todo: update these exceptions for the spectrum
-                except ZeroDivisionError:
-                    if stride[channel] == 0:
-                        raise ZeroDivisionError("Spectrogram stride is 0")
-                    elif fftlength[channel] == 0:
-                        raise ZeroDivisionError("FFT length is 0")
-                    else:
-                        raise
-                except ValueError:
-                    self.logger.error('TimeSeries span: {0},'
-                                      ' TimeSeries length: {1}, Stride: {2}'
-                                      .format(ts.span,
-                                              ts.span[-1] - ts.span[0],
-                                              stride[channel]))
-                    raise
-                if hasattr(channel,
-                           'resample') and channel.resample is not None:
+                spec = ts.asd(fftlength=fftlength[channel],
+                              overlap=overlap[channel],
+                              method=self.method,
+                              **self.window)\
+                    .crop(flow[channel], fhigh[channel])
+                spec.epoch = ts.epoch
+                self.logger.debug('TimeSeries span: {0},'
+                                  ' TimeSeries length: {1}, Stride: {2}'
+                                  .format(ts.span,
+                                          ts.span[-1] - ts.span[0],
+                                          stride[channel]))
+                if hasattr(channel, 'resample')\
+                        and channel.resample is not None:
                     nyq = float(channel.resample) / 2.
                     nyqidx = int(nyq / spec.df.value)
                     spec = spec[:nyqidx]
                 if channel in filter and filter[channel]:
+                    self.logger.debug('Filtering ASD')
                     spec = spec.filter(*filter[channel]).copy()
-                #asd = (Spectrum(specgram.value[-1, :],
-                #                frequencies=specgram.frequencies,
-                #                channel=specgram.channel,
-                #                unit=specgram.unit)) \
-                #    .crop(flow[channel], fhigh[channel])
+                self.logger.debug('Calculating insp. range psd')
                 range_spec = inspiral_range_psd(spec ** 2)
+                self.logger.debug('Insp. range psd calculated')
                 ranges = (range_spec * range_spec.df) ** 0.5
                 data[channel] = Spectrogram.from_spectra(
                     ranges, epoch=spec.epoch, dt=self.stride[channel],
                     frequencies=spec.frequencies)
+                self.logger.debug('From_timeseries completed...')
         return data
 
 
@@ -179,7 +165,6 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         fftlength = kwargs.pop('fftlength', 1)
         overlap = kwargs.pop('overlap', 0)
         method = kwargs.pop('method', 'welch')
-        window = kwargs.pop('window', None)
         filter = kwargs.pop('filter', None)
         ratio = kwargs.pop('ratio', None)
         resample = kwargs.pop('resample', None)
@@ -193,7 +178,7 @@ class BNSRangeSpectrogramMonitor(TimeSeriesMonitor):
         # build 'data' as SpectrogramBuffer
         self.spectrograms = SpectrogramIterator(
             channels, stride=stride, method=method, overlap=overlap,
-            fftlength=fftlength, flow=flow, fhigh=fhigh, window=window)
+            fftlength=fftlength, flow=flow, fhigh=fhigh)
         if isinstance(filter, list):
             self.spectrograms.filter = dict(zip(self.spectrograms.channels,
                                                 filter))
