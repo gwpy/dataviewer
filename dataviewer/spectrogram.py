@@ -159,7 +159,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         self.fftlength = fftlength
         self.stride = stride
         self.overlap = overlap
-
+        self.olepoch = None
         # build monitor
         kwargs.setdefault('yscale', 'log')
         kwargs.setdefault('gap', 'raise')
@@ -230,6 +230,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         # be sure that the first cycle is syncronized with the buffer
         if not self.spectrograms.data:
             self.epoch = new[self.channels[0]][0].span[0]
+        self.olepoch = self.epoch
         while new[self.channels[0]][0].span[-1] >= (self.epoch + self.stride):
             # data buffer will return dict of 1-item lists, so reform to tsd
             _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
@@ -264,8 +265,8 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             ax = next(axes)
             if len(ax.collections):
                 new = self.data[channel][-1:]
-                # remove old spectrogram
-                if float(abs(new[-1].span)) > self.buffer.interval:
+                # remove old spectrogram if the new data contain it
+                if float(new[-1].span[0]) < self.olepoch:
                     ax.collections.remove(ax.collections[-1])
             else:
                 new = self.data[channel]
@@ -282,6 +283,9 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             for spec in new:
                 coll = ax.plot(spec, label=label, **pparams)
                 label = None
+            # rescale all the colormaps to the last one plotted
+            for co in ax.collections:
+                co.set_clim(coll.get_clim())
             try:
                 coloraxes[i]
             except IndexError:
