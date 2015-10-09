@@ -332,10 +332,18 @@ class SpectrumMonitor(TimeSeriesMonitor):
             except (KeyError, IndexError, AttributeError):
                 SPECTRA[channel] = []
                 fftepoch = new[channel].epoch.gps
-            data = new[channel].crop(start=fftepoch)
+
+            if new[channel].span[0] > fftepoch:
+                s = ('The available data starts at gps %d '
+                     'which. is after the end of the last spectrum(gps %d)'
+                     ': a segment is missing and will be skipped!'
+                     % (new[channel].span[0], fftepoch))
+                self.logger.warning(s)
+                fftepoch = new[channel].span[0]
+
             count = 0
             # calculate new FFTs
-            while fftepoch + self.fftlength <= data.span[-1]:
+            while fftepoch + self.fftlength <= new[channel].span[-1]:
                 fdata = new[channel].crop(fftepoch, fftepoch + self.fftlength)
                 fft = fdata.asd(self.fftlength, self.overlap, method=method,
                                 **self.window)
@@ -387,8 +395,9 @@ class SpectrumMonitor(TimeSeriesMonitor):
                             **pparams)
                 except ValueError as e:
                     if 'Data has no positive values' in str(e):
-                        e.args = (str(e) + ' Manually declaring the ylim will '
-                                           'prevent this from occuring.',)
+                        e.message = (str(e) +
+                                     ' Manually declaring the ylim will '
+                                     'prevent this from occurring.',)
                         raise
                 self.legend = ax.legend(**self.params['legend'])
             for comb, parameters in self.combinations.iteritems():

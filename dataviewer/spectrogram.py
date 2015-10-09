@@ -22,7 +22,6 @@
 import re
 from itertools import (cycle, izip_longest)
 
-import numpy
 
 from astropy.time import Time
 
@@ -31,8 +30,7 @@ from gwpy.spectrogram import (Spectrogram, SpectrogramList)
 from gwpy.plotter import (SpectrogramPlot, TimeSeriesAxes)
 
 from . import version
-from .buffer import (OrderedDict, DataBuffer, DataIterator)
-from .core import PARAMS
+from .buffer import (OrderedDict, DataBuffer)
 from .registry import register_monitor
 from .timeseries import TimeSeriesMonitor
 
@@ -54,13 +52,17 @@ class SpectrogramBuffer(DataBuffer):
     ListClass = SpectrogramList
 
     def __init__(self, channels, stride=1, fftlength=1, overlap=0,
-                 method='welch', filter=None, **kwargs):
+                 method='welch', filters=None, **kwargs):
         super(SpectrogramBuffer, self).__init__(channels, **kwargs)
         self.method = method
         self.stride = self._param_dict(stride)
         self.fftlength = self._param_dict(fftlength)
         self.overlap = self._param_dict(overlap)
-        self.filter = self._param_dict(filter)
+        self.filters = self._param_dict(filters)
+        if 'window' in kwargs:
+            self.window = {'window': kwargs.pop('window')}
+        else:
+            self.window = {}
 
     def _param_dict(self, param):
         # format parameters
@@ -80,11 +82,10 @@ class SpectrogramBuffer(DataBuffer):
 
     def from_timeseriesdict(self, tsd, **kwargs):
         # format parameters
-        method = kwargs.pop('method', self.method)
         stride = self._param_dict(kwargs.pop('stride', self.stride))
         fftlength = self._param_dict(kwargs.pop('fftlength', self.fftlength))
         overlap = self._param_dict(kwargs.pop('overlap', self.overlap))
-        filter = self._param_dict(kwargs.pop('filter', self.filter))
+        filters = self._param_dict(kwargs.pop('filter', self.filters))
 
         # calculate spectrograms
         data = self.DictClass()
@@ -92,7 +93,9 @@ class SpectrogramBuffer(DataBuffer):
             try:
                 specgram = ts.spectrogram(stride[channel],
                                           fftlength=fftlength[channel],
-                                          overlap=overlap[channel]) ** (1/2.)
+                                          overlap=overlap[channel],
+                                          method=self.method,
+                                          **self.window) ** (1 / 2.)
             except ZeroDivisionError:
                 if stride[channel] == 0:
                     raise ZeroDivisionError("Spectrogram stride is 0")
@@ -103,21 +106,21 @@ class SpectrogramBuffer(DataBuffer):
             if hasattr(channel, 'resample') and channel.resample is not None:
                 nyq = float(channel.resample) / 2.
                 nyqidx = int(nyq / specgram.df.value)
-                specgram = specgram[:,:nyqidx]
-            if channel in filter and filter[channel]:
-                specgram = specgram.filter(*filter[channel]).copy()
+                specgram = specgram[:, :nyqidx]
+            if channel in filters and filters[channel]:
+                specgram = specgram.filter(*filters[channel]).copy()
             data[channel] = specgram
 
         return data
 
 
 class SpectrogramIterator(SpectrogramBuffer):
-
     def _next(self):
         new = super(SpectrogramIterator, self)._next()
         return self._from_timeseriesdict(
             new, method=self.method, stride=self.stride,
-            fftlength=self.fftlength, overlap=self.overlap, filter=self.filter)
+            fftlength=self.fftlength, overlap=self.overlap,
+            filter=self.filters)
 
 
 # -----------------------------------------------------------------------------
@@ -140,7 +143,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         overlap = kwargs.pop('overlap', 0)
         method = kwargs.pop('method', 'welch')
         window = kwargs.pop('window', None)
-        filter = kwargs.pop('filter', None)
+        filters = kwargs.pop('filters', kwargs.pop('filter', []))
         ratio = kwargs.pop('ratio', None)
         resample = kwargs.pop('resample', None)
         kwargs.setdefault('interval', stride)
@@ -152,21 +155,22 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         # build 'data' as SpectrogramBuffer
         self.spectrograms = SpectrogramIterator(
             channels, stride=stride, method=method, overlap=overlap,
-            fftlength=fftlength)
-        if isinstance(filter, list):
-            self.spectrograms.filter = dict(zip(self.spectrograms.channels,
-                                                filter))
+            fftlength=fftlength, window=window)
+        if isinstance(filters, list):
+            self.spectrograms.filters = dict(zip(self.spectrograms.channels,
+                                                 filters))
         else:
-            self.spectrograms.filter = filter
+            self.spectrograms.filters = filters
+
         self.fftlength = fftlength
         self.stride = stride
         self.overlap = overlap
-
+        self.olepoch = None
         # build monitor
         kwargs.setdefault('yscale', 'log')
         kwargs.setdefault('gap', 'raise')
         super(SpectrogramMonitor, self).__init__(*channels,
-              **kwargs)
+                                                 **kwargs)
         self.buffer.channels = self.spectrograms.channels
 
         # reset buffer duration to store a single stride
@@ -205,10 +209,10 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
-            ax.set_xlim(float(self.epoch), float(self.epoch) + self.duration) # ?
+            ax.set_xlim(float(self.epoch), float(self.epoch) + self.duration)
             ax.set_epoch(float(self.epoch))
 
-        for n in range(len(self.channels)):
+        for _ in range(len(self.channels)):
             _new_axes()
         for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
             ax.set_xlabel('')
@@ -216,14 +220,33 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         self.set_params('refresh')
         return self._fig
 
-    def update_data(self, new, gap='pad', pad=0):
+    def update_data(self, new):
         """Update the `SpectrogramMonitor` data
 
         This method only applies a ratio, if configured
         """
-        # data buffer will return dict of 1-item lists, so reform to tsd
-        new = TimeSeriesDict((key, val[0]) for key, val in new.iteritems())
-        self.spectrograms.append(self.spectrograms.from_timeseriesdict(new))
+        # check that the stored epoch is bigger then the first buffered data
+        if new[self.channels[0]][0].span[0] > self.epoch:
+            s = ('The available data starts at gps %d '
+                 'which. is after the end of the last spectrogram (gps %d)'
+                 ': a segment is missing and will be skipped!')
+            self.logger.warning(s, (new[self.channels[0]][0].span[0],
+                                    self.epoch))
+            self.epoch = new[self.channels[0]][0].span[0]
+        # be sure that the first cycle is syncronized with the buffer
+        if not self.spectrograms.data:
+            self.epoch = new[self.channels[0]][0].span[0]
+        self.olepoch = self.epoch
+        while new[self.channels[0]][0].span[-1] >= (self.epoch + self.stride):
+            # data buffer will return dict of 1-item lists, so reform to tsd
+            _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
+                                                    self.stride))
+                                  for key, val in new.iteritems())
+            self.logger.debug('Computing spectrogram from epoch %d',
+                              self.epoch)
+            self.spectrograms.append(
+                self.spectrograms.from_timeseriesdict(_new))
+            self.epoch += self.stride
         self.spectrograms.crop(self.epoch - self.duration)
         self.data = type(self.spectrograms.data)()
         for channel in self.channels:
@@ -238,8 +261,6 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         return self.data
 
     def refresh(self):
-        # extract data
-        # replot all spectrogram
         axes = cycle(self._fig.get_axes(self.AXES_CLASS.name))
         coloraxes = self._fig.colorbars
         params = self.params['draw']
@@ -248,8 +269,8 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             ax = next(axes)
             if len(ax.collections):
                 new = self.data[channel][-1:]
-                # remove old spectrogram
-                if float(abs(new[-1].span)) > self.buffer.interval:
+                # remove old spectrogram if the new data contains it
+                if float(new[-1].span[0]) < self.olepoch:
                     ax.collections.remove(ax.collections[-1])
             else:
                 new = self.data[channel]
@@ -266,6 +287,9 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             for spec in new:
                 coll = ax.plot(spec, label=label, **pparams)
                 label = None
+            # rescale all the colormaps to the last one plotted
+            for co in ax.collections:
+                co.set_clim(coll.get_clim())
             try:
                 coloraxes[i]
             except IndexError:
@@ -286,7 +310,7 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         self.logger.debug('Figure data updated')
         # add suptitle
-        if not 'suptitle' in self.params['init']:
+        if 'suptitle' not in self.params['init']:
             prefix = ('FFT length: %ss, Overlap: %ss, Stride: %ss -- '
                       % (self.fftlength, self.overlap, self.stride))
             utc = re.sub('\.0+', '',
