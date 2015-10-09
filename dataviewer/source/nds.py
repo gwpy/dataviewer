@@ -226,9 +226,13 @@ class NDSDataIterator(NDSDataSource):
                             '%d, restarting building the buffer from %d ') \
                             % (epoch, ts.span[0], ts.span[0])
                         self.logger.warning(str(e))
-                        new = TimeSeriesDict()
-                        span = 0
-                        continue
+                        new = TimeSeriesDict((c, ts))
+                    elif 'starts before' in str(e):
+                        e.message = (
+                            'Overlap between old data and new data in the '
+                            'nds buffer, only the new data will be kept.')
+                        self.logger.warning(str(e))
+                        new = TimeSeriesDict((c, ts))
                     else:
                         raise
                 span = abs(new[c].span)
