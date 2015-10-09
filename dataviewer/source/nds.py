@@ -20,7 +20,6 @@
 """
 
 
-
 from numpy import ceil
 from gwpy.io import nds as ndsio
 from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
@@ -34,6 +33,7 @@ from . import (register_data_source, register_data_iterator)
 
 __author__ = 'Duncan Macleod <duncan.macleod@ligo.org>'
 __version__ = version.version
+
 
 class NDSDataSource(object):
     """A data holder for fetching from NDS
@@ -107,7 +107,7 @@ class NDSDataSource(object):
         Parameters
         ----------
         channels : `list`, `~gwpy.detectorChannelList`
-            list of channels whos data are required
+            list of channels whose data are required
         start : `int`
             GPS start time of request
         end : `int`
@@ -146,7 +146,7 @@ class NDSDataIterator(NDSDataSource):
     """
     def __init__(self, channels, duration=0, interval=2, host=None,
                  port=None, connection=None, logger=Logger('nds'),
-                 gap='pad', pad=0.0, max_attempts=50, **kwargs):
+                 gap='pad', pad=0.0, attempts=50, **kwargs):
         """Construct a new iterator
         """
         super(NDSDataIterator, self).__init__(channels, host=host, port=port,
@@ -162,7 +162,7 @@ class NDSDataIterator(NDSDataSource):
         self.duration = duration
         self.gap = gap
         self.pad = pad
-        self.max_attempts = max_attempts
+        self.attempts = attempts
         self.start()
 
     def __iter__(self):
@@ -174,7 +174,7 @@ class NDSDataIterator(NDSDataSource):
                 self.ndsstride, self._unique_channel_names(self.channels))
         except RuntimeError as e:
             if e.message == 'Invalid channel name':
-                self.logger.error('Invalid channel name {0}'.format(
+                self.logger.error('Invalid channel name %s' % str(
                     self._unique_channel_names(self.channels)))
             raise
         self.logger.debug('NDSDataIterator ready')
@@ -190,21 +190,21 @@ class NDSDataIterator(NDSDataSource):
         new = TimeSeriesDict()
         span = 0
         epoch = 0
-        attempts = 0
+        att = 0
         self.logger.debug('Waiting for next NDS2 packet...')
         while span < self.interval:
             try:
                 buffers = next(self.iterator)
             except RuntimeError as e:
                 self.logger.error('RuntimeError caught: %s' % str(e))
-                if attempts < self.max_attempts:
-                    attempts += 1
-                    wait_time = attempts / 4 + 1
+                if att < self.attempts:
+                    att += 1
+                    wait_time = att / 4 + 1
                     self.logger.warning(
-                        'Attempting to reconnect to the nds server... {0}/{1}'
-                        .format(attempts, self.max_attempts))
-                    self.logger.warning('Next attempt in minimum {0} seconds'
-                                        .format(wait_time))
+                        'Attempting to reconnect to the nds server... %d/%d'
+                        % (att, self.attempts))
+                    self.logger.warning('Next attempt in minimum %d seconds' %
+                                        wait_time)
                     self.restart()
                     sleep(wait_time - tconvert('now') % wait_time)
                     continue
@@ -212,7 +212,7 @@ class NDSDataIterator(NDSDataSource):
                     self.logger.critical(
                         'Maximum number of attempts reached, exiting')
                     break
-            attempts = 0
+            att = 0
             for buff, c in zip(buffers, uchannels):
                 ts = TimeSeries.from_nds2_buffer(buff)
                 try:
@@ -220,9 +220,9 @@ class NDSDataIterator(NDSDataSource):
                 except ValueError as e:
                     if 'discontiguous' in str(e):
                         e.message = (
-                            'NDS connection dropped data between {0} and '
-                            '{1}, restarting building the buffer from {1} ') \
-                            .format(epoch, ts.span[0])
+                            'NDS connection dropped data between %d and '
+                            '%d, restarting building the buffer from %d ') \
+                            % (epoch, ts.span[0], ts.span[0])
                         self.logger.warning(str(e))
                         new = TimeSeriesDict()
                         span = 0
@@ -248,7 +248,7 @@ class NDSDataIterator(NDSDataSource):
         Returns
         -------
         data : :class:`~gwpy.timeseries.TimeSeriesDict`
-           a new `TimeSeriesDict` with the concantenated, buffered data
+           a new `TimeSeriesDict` with the concatenated, buffered data
         """
         # get new data
         new = self._next()
@@ -284,8 +284,7 @@ class NDSDataIterator(NDSDataSource):
             self.interval / float(self.ndsstride)) * self.ndsstride
         self._duration = rinterval + d - gcd(rinterval, d)
         self.logger.debug(
-            'The buffer has been set to store {0} s of data'.format(
-                self.duration))
+            'The buffer has been set to store %d s of data' % self.duration)
 
 
 register_data_iterator(NDSDataIterator)
