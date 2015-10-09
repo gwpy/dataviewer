@@ -157,10 +157,10 @@ class NDSDataIterator(NDSDataSource):
             ndsstride = 1
         else:
             ndsstride = int(ceil(min(interval, 10)))
-        self.duration = duration
         self.interval = interval
         self.ndsstride = ndsstride
-        self._duration = 0
+        self._duration = None
+        self.duration = duration
         self.gap = gap
         self.pad = pad
         self.attempts = attempts
