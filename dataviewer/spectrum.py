@@ -28,7 +28,7 @@ import numpy
 
 from astropy.time import Time
 
-from gwpy.plotter import (SpectrumPlot, SpectrumAxes, rcParams)
+from gwpy.plotter import (SpectrumPlot, SpectrumAxes)
 from gwpy.spectrum.core import Spectrum
 
 from . import version
@@ -78,7 +78,6 @@ class SpectrumMonitor(TimeSeriesMonitor):
         self.spectra = OrderedDict()
         self._flims = None
 
-
         # add references
         self._references = OrderedDict()
         if 'reference' in kwargs:
@@ -86,7 +85,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         # add combinations
         self.combinations = OrderedDict()
         if 'combination' in kwargs:
-             self.add_combination(kwargs.pop('combination'), channels)
+            self.add_combination(kwargs.pop('combination'))
 
         # parse filters
         filters = kwargs.pop('filters', kwargs.pop('filter', []))
@@ -115,22 +114,27 @@ class SpectrumMonitor(TimeSeriesMonitor):
         ---------
         refs: `Spectrum`, `dict`, `tuple`, `list`
             Reference spectra. Can be:
-            - `Spectrum`: one single reference spectrum, label taken from name.
-            - `dict`: keys must be `Spectrum` objects, values must be
-            dictionaries containing plot arguments, e.g.
-               refs = {refspectrum: {'color': 'r'}, ...}
-            - 'tuple': first element must be `Spectrum` object, second must be
+            -`Spectrum`: one single reference spectrum, label taken
+            from name and needs to be unique
+            -'dict': keys must be the path of the files containing the spectra,
+            values must be dictionaries containing plot arguments, e.g.
+                refs = {'/path/to/file':{'label':'somelabel', ...}, ...}
+            -'tuple': first element must be `Spectrum` object, second must be
              dictionary containing plot arguments, e.g.
-                refs = (refspectrum, {'color': 'r'}, ...)
-            - `list`: each element can be a `Spectrum` or a tuple following the
+                refs = ((refspectrum, {'color': 'r'}), ...)
+            -'list`: each element can be a `Spectrum` or a tuple following the
             format outlined above.
         """
         if isinstance(ref, Spectrum):
-            refparams.setdefault('label', ref.name or 'Reference')
-            self._references[ref] = refparams
+            refparams.setdefault('label', ref.name)
+            refparams['spectrum'] = ref
+            self._references[refparams['label']] = refparams
         elif isinstance(ref, dict):
             for key, val in ref.iteritems():
-                self.add_reference(key, **val)
+                refspec = Spectrum.read(key, format=val.pop('format', None))
+                refspec.name = val.pop('name')
+                self.add_reference(refspec, **val)
+
         elif isinstance(ref, (list, tuple)):
             # list of references provided
             for r in ref:
@@ -138,9 +142,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         else:
             raise ValueError('Invalid reference syntax.')
 
-    def add_combination(self, combs, channels):
-
-        nch = len(channels)
+    def add_combination(self, combs):
 
         # parse combinations
         if combs is None:
@@ -182,7 +184,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         elif isinstance(combs, (list, tuple)):
             for c in combs:
                 if isinstance(c, basestring):
-                    self.combinations[self.parse_combination(c)] = {'label':c}
+                    self.combinations[self.parse_combination(c)] = {'label': c}
                 elif isinstance(c, tuple) and len(c) == 2:
                     k = combs[0]
                     v = combs[1]
@@ -218,8 +220,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         try:
             ncha = len(self.channels)
-            if any([ci >= ncha for ci in cha_ids]) or any(
-                [ri >= nref for ri in ref_ids]):
+            if any([ci >= ncha for ci in cha_ids]) or\
+                    any([ri >= nref for ri in ref_ids]):
                 raise IndexError('Combination out of bounds.')
         except AttributeError:
             pass
@@ -229,7 +231,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
             # channel and reference spectra
             cha_spec = dict((i, self.spectra[self.channels[i]]) for
                             i in cha_ids)
-            ref_spec = dict((i, self._references.keys()[i]) for i in ref_ids)
+            ref_spec = dict((i, self._references.values()[i]['spectrum'])
+                            for i in ref_ids)
 
             if self._flims is None:
                 # PREPARE CHANNELS
@@ -278,7 +281,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
-            for spec, plotparams in self._references.iteritems():
+            for _, plotparams in self._references.iteritems():
+                spec = plotparams.pop('spectrum')
                 ax.plot(spec, **plotparams)
                 self.legend = ax.legend(**self.params['legend'])
 
@@ -335,7 +339,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 fdata = new[channel].crop(fftepoch, fftepoch + self.fftlength)
                 fft = fdata.asd(self.fftlength, self.overlap, method=method,
                                 **self.window)
-                fft.epoch = fdata.epoch # is this really necessary? why doesn't the .asd method copy it?
+                # copy the epoch, necessary since .asd doesn't copy it yet
+                fft.epoch = fdata.epoch
                 self.logger.debug('%ds ASD calculated for %s'
                                   % (self.fftlength, str(channel)))
                 SPECTRA[channel] = (SPECTRA[channel] + [fft])[-self.averages:]
@@ -411,11 +416,12 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
         self.logger.debug('Figure data updated')
         # add suptitle
-        if not 'suptitle' in self.params['init']:
+        if 'suptitle' not in self.params['init']:
             prefix = ('FFT length: %ss, Overlap: %ss, Averages: %d -- '
                       % (self.fftlength, self.overlap, self.averages))
             utc = re.sub('\.0+', '',
-                         Time(float(self.epoch), format='gps', scale='utc').iso)
+                         Time(float(self.epoch),
+                              format='gps', scale='utc').iso)
             suffix = 'Last updated: %s UTC (%s)' % (utc, self.epoch)
             self.suptitle = self._fig.suptitle(prefix + suffix)
         self.set_params('refresh')
@@ -437,8 +443,8 @@ def parseparams(deflabel, param_in):
                     m = '.'
                 raise ValueError('Unsupported parameter %r for'
                                  'single line plotting%s' % (p, m))
-    elif isinstance(param_in, list)\
-    and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
+    elif isinstance(param_in, list) \
+            and all([isinstance(p, tuple) and len(p) == 2 for p in param_in]):
         for (p, v) in param_in:
             if p in PARAMS['draw']+['label']:
                 param_out[p] = v
