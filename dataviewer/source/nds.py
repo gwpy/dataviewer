@@ -228,7 +228,8 @@ class NDSDataIterator(NDSDataSource):
                         self.logger.warning(str(e))
                         new = TimeSeriesDict()
                         new[c] = ts.copy()
-                    elif 'starts before' in str(e):
+                    elif ('starts before' in str(e)) or \
+                            ('overlapping' in str(e)):
                         e.message = (
                             'Overlap between old data and new data in the '
                             'nds buffer, only the new data will be kept.')
