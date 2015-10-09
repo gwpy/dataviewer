@@ -152,14 +152,15 @@ class NDSDataIterator(NDSDataSource):
         super(NDSDataIterator, self).__init__(channels, host=host, port=port,
                                               connection=connection,
                                               logger=logger, **kwargs)
-        self.interval = interval
+
         if self.connection.get_protocol() == 1:
             ndsstride = 1
         else:
             ndsstride = int(ceil(min(interval, 10)))
+        self.duration = duration
+        self.interval = interval
         self.ndsstride = ndsstride
         self._duration = 0
-        self.duration = duration
         self.gap = gap
         self.pad = pad
         self.attempts = attempts
@@ -229,7 +230,6 @@ class NDSDataIterator(NDSDataSource):
                         continue
                     else:
                         raise
-                        # raise #butto via sti dati e ricomincio?
                 span = abs(new[c].span)
                 epoch = new[c].span[-1]
                 self.logger.debug('%ds data for %s received'
