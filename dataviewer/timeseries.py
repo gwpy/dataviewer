@@ -138,8 +138,9 @@ class TimeSeriesMonitor(DataMonitor):
                 l = ax.plot(ts, label=label, **pparams)
                 ax.legend()
             else:
+                # TODO: remove .copy() as soon as copy=True is fixed in gwpy
                 ts = TimeSeries(line.get_ydata(), times=line.get_xdata(),
-                                copy=True).copy()  # the .copy() shouln't be necessary...
+                                copy=True).copy()
                 for t2 in self.buffer.get((ts.span[1], self.epoch), channel,
                                           fetch=False):
                     ts.append(t2, pad=self.buffer.pad, gap=self.buffer.gap)
