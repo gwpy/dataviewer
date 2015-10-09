@@ -164,6 +164,7 @@ class NDSDataIterator(NDSDataSource):
         self.gap = gap
         self.pad = pad
         self.attempts = attempts
+
         self.start()
 
     def __iter__(self):
