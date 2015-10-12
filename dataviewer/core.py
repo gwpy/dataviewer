@@ -70,7 +70,7 @@ class Monitor(TimedAnimation):
     # -------------------------------------------------------------------------
     # Initialise the figure
 
-    def __init__(self, fig=None, interval=1, blit=True, repeat=False,
+    def __init__(self, fig=None, interval=2, blit=True, repeat=False,
                  logger=Logger('monitor'), figname=None, save_every=1,
                  tight_bbox=False, pause=False, clock=False, **kwargs):
         self.logger = logger
@@ -246,7 +246,7 @@ class Monitor(TimedAnimation):
                         getattr(ax, 'set_%s' % key)(v)
             elif key in AXES_PARAMS:
                 if not (isinstance(val, (list, tuple)) and
-                        isinstance(val[0], (list, tuple))):
+                        isinstance(val[0], (list, tuple, basestring))):
                     val = [val] * len(self._fig.axes)
                 for ax, v in zip(self._fig.axes, val):
                     getattr(ax, 'set_%s' % key)(v)

@@ -109,7 +109,7 @@ class TimeSeriesMonitor(DataMonitor):
     def duration(self, d):
         self.buffer.duration = d
 
-    def update_data(self, new, gap='pad', pad=nan):
+    def update_data(self, new):
         self.epoch = new[self.channels[0]].segments[-1][1]
 
     def refresh(self):
@@ -123,7 +123,7 @@ class TimeSeriesMonitor(DataMonitor):
                 # haven't plotted this channel before
                 ax = next(axes)
                 label = (hasattr(channel, 'label') and channel.label or
-                         channel.texname)
+                         channel.name)
                 pparams = {}
                 for key in params:
                     try:
@@ -138,8 +138,9 @@ class TimeSeriesMonitor(DataMonitor):
                 l = ax.plot(ts, label=label, **pparams)
                 ax.legend()
             else:
+                # TODO: remove .copy() as soon as copy=True is fixed in gwpy
                 ts = TimeSeries(line.get_ydata(), times=line.get_xdata(),
-                                copy=True).copy()  # the .copy() shouln't be necessary...
+                                copy=True).copy()
                 for t2 in self.buffer.get((ts.span[1], self.epoch), channel,
                                           fetch=False):
                     ts.append(t2, pad=self.buffer.pad, gap=self.buffer.gap)
