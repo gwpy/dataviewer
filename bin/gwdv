@@ -67,6 +67,10 @@ if args.no_latex:
 
 mon = from_ini(args.configuration)
 mon.logger.setLevel(args.verbose)
+try:  # todo: put all the logger of all the monitors to the level?
+    mon.spectrograms.logger.setLevel(args.verbose)
+except AttributeError:
+    pass
 try:
     if args.back_fill:
         mon.backfill()
