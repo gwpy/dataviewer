@@ -230,8 +230,8 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             s = ('The available data starts at gps %d '
                  'which. is after the end of the last spectrogram (gps %d)'
                  ': a segment is missing and will be skipped!')
-            self.logger.warning(s, (new[self.channels[0]][0].span[0],
-                                    self.epoch))
+            self.logger.warning(s, new[self.channels[0]][0].span[0],
+                                self.epoch)
             self.epoch = new[self.channels[0]][0].span[0]
         # be sure that the first cycle is syncronized with the buffer
         if not self.spectrograms.data:
@@ -294,12 +294,12 @@ class SpectrogramMonitor(TimeSeriesMonitor):
                 coloraxes[i]
             except IndexError:
                 cbparams = {}
-                for key in self.params['colorbar']:
-                    try:
-                        if self.params['colorbar'][key][i]:
-                            cbparams[key] = self.params['colorbar'][key][i]
-                    except IndexError:
-                        pass
+                for key, val in self.params['colorbar'].iteritems():
+                    if not (isinstance(val, (list, tuple)) and
+                                isinstance(val[0], (list, tuple, basestring))):
+                        cbparams[key] = self.params['colorbar'][key]
+                    else:
+                        cbparams[key] = self.params['colorbar'][key][i]
                 try:
                     self._fig.add_colorbar(mappable=coll, ax=ax, **cbparams)
                 except Exception as e:
