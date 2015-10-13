@@ -214,9 +214,13 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         for _ in range(len(self.channels)):
             _new_axes()
-        for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
-            ax.set_xlabel('')
         self.set_params('init')
+        for i, ax in enumerate(self._fig.get_axes(self.AXES_CLASS.name)):
+            if i != (len(self._fig.get_axes(self.AXES_CLASS.name)) - 1):
+                ax.set_xlabel('')
+            if i != 0:
+                ax.set_title('')
+
         self.set_params('refresh')
         return self._fig
 
