@@ -57,7 +57,7 @@ PARAMS['legend'] = ['bbox_to_anchor', 'loc', 'borderaxespad', 'ncol']
 PARAMS['colorbar'] = ['log', 'clim', 'label']
 
 FIGURE_PARAMS = ['title', 'subtitle']
-AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel']
+AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel', 'xscale', 'yscale']
 
 
 
@@ -85,7 +85,7 @@ class Monitor(TimedAnimation):
             fig = self.init_figure()
         # generate monitor
         self.interval = interval
-        super(Monitor, self).__init__(fig, interval=int(interval * 1000),
+        super(Monitor, self).__init__(fig, interval=int(100),
                                       blit=blit, repeat=repeat, **kwargs)
 
         self.figname = figname
