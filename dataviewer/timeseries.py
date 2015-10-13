@@ -23,7 +23,7 @@ from itertools import cycle
 
 from numpy import nan
 
-from gwpy.timeseries import (TimeSeries, TimeSeriesDict)
+from gwpy.timeseries import (TimeSeries)
 from gwpy.plotter import (TimeSeriesPlot, TimeSeriesAxes)
 
 from . import version
@@ -85,16 +85,21 @@ class TimeSeriesMonitor(DataMonitor):
         if self.sep:
             for channel in self.channels:
                 _new_axes()
-            for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
-                ax.set_xlabel('')
         else:
             _new_axes()
         self.set_params('init')
+        # remove repeated titles and xlabels
+        for i, ax in enumerate(self._fig.get_axes(self.AXES_CLASS.name)):
+            if i != (len(self._fig.get_axes(self.AXES_CLASS.name)) - 1):
+                ax.set_xlabel('')
+            if i != 0:
+                ax.set_title('')
+
         self.set_params('refresh')
         for ax in self._fig.axes:
             if ax.get_yscale() == 'log':
                 ax.grid(True, 'minor', 'y')
-        self._fig.add_colorbar(visible=False)
+            self._fig.add_colorbar(visible=False, ax=ax)
         return self._fig
 
     @property
@@ -123,7 +128,7 @@ class TimeSeriesMonitor(DataMonitor):
                 # haven't plotted this channel before
                 ax = next(axes)
                 label = (hasattr(channel, 'label') and channel.label or
-                         channel.name)
+                         channel.texname)
                 pparams = {}
                 for key in params:
                     try:
