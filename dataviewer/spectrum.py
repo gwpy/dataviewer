@@ -246,8 +246,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
                     df = ref_spec.values()[0].df.value
 
                 for spec in cha_spec.values() + ref_spec.values():
-                    fmin = max(fmin, spec.span.start)
-                    fmax = min(fmax, spec.span.end)
+                    fmin = max(fmin, spec.xspan.start)
+                    fmax = min(fmax, spec.xspan.end)
                     if abs(spec.df.value - df) > df_tolerance:
                         raise CombinationError('Cannot operate on spectra with'
                                                ' different df')
