@@ -307,8 +307,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 ax.grid('on', 'both', 'x')
             if ax.get_yscale() == 'log':
                 ax.grid('on', 'both', 'y')
-
-        self._fig.add_colorbar(visible=False)
+            self._fig.add_colorbar(visible=False)
         return self._fig
 
     def update_data(self, new, gap='pad', pad=0):
