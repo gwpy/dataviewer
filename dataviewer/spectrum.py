@@ -282,7 +282,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
             for _, plotparams in self._references.iteritems():
-                ppms = plotparams
+                ppms = plotparams.copy()
                 spec = ppms.pop('spectrum')
                 ax.plot(spec, **ppms)
                 self.legend = ax.legend(**self.params['legend'])
