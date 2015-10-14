@@ -48,15 +48,14 @@ BTN_HEIGHT = 0.05
 # fixed parameters
 PARAMS = {}
 PARAMS['figure'] = ['figsize']
-PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel', 'xscale', 'yscale',
-                  'suptitle']
+PARAMS['init'] = ['title', 'xlabel', 'ylabel', 'xscale', 'yscale']
 PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
                   'color', 'alpha', 'norm', 'vmin', 'vmax', 'cmap']
 PARAMS['refresh'] = ['xlim', 'ylim']
 PARAMS['legend'] = ['bbox_to_anchor', 'loc', 'borderaxespad', 'ncol']
 PARAMS['colorbar'] = ['log', 'clim', 'label']
 
-FIGURE_PARAMS = ['title', 'subtitle']
+FIGURE_PARAMS = ['title']
 AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel', 'xscale', 'yscale']
 
 
