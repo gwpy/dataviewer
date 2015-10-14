@@ -282,18 +282,24 @@ class SpectrumMonitor(TimeSeriesMonitor):
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
             for _, plotparams in self._references.iteritems():
-                spec = plotparams.pop('spectrum')
-                ax.plot(spec, **plotparams)
+                ppms = plotparams
+                spec = ppms.pop('spectrum')
+                ax.plot(spec, **ppms)
                 self.legend = ax.legend(**self.params['legend'])
 
         if self.sep:
             for n in range(len(self.channels) + len(self.combinations)):
                 _new_axes()
-            for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
-                ax.set_xlabel('')
         else:
             _new_axes()
         self.set_params('init')
+        # remove repeated titles and xlabels
+        for i, ax in enumerate(self._fig.get_axes(self.AXES_CLASS.name)):
+            if i != (len(self._fig.get_axes(self.AXES_CLASS.name)) - 1):
+                ax.set_xlabel('')
+            if i != 0:
+                ax.set_title('')
+
         self.set_params('refresh')
         # set grids
         for ax in self._fig.axes:
