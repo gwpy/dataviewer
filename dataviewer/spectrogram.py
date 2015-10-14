@@ -241,7 +241,8 @@ class SpectrogramMonitor(TimeSeriesMonitor):
         if not self.spectrograms.data:
             self.epoch = new[self.channels[0]][0].span[0]
         self.olepoch = self.epoch
-        while new[self.channels[0]][0].span[-1] >= (self.epoch + self.stride):
+        while int(new[self.channels[0]][0].span[-1]) >=\
+                int(self.epoch + self.stride):
             # data buffer will return dict of 1-item lists, so reform to tsd
             _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
                                                     self.stride))

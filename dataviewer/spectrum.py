@@ -348,7 +348,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
             count = 0
             # calculate new FFTs
-            while fftepoch + self.fftlength <= new[channel].span[-1]:
+            while int(fftepoch + self.fftlength) <= int(new[channel].span[-1]):
                 fdata = new[channel].crop(fftepoch, fftepoch + self.fftlength)
                 fft = fdata.asd(self.fftlength, self.overlap, method=method,
                                 **self.window)
