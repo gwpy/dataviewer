@@ -49,7 +49,7 @@ BTN_HEIGHT = 0.05
 PARAMS = {}
 PARAMS['figure'] = ['figsize']
 PARAMS['init'] = ['title', 'xlabel', 'ylabel', 'xscale', 'yscale']
-PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
+PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'markersize',
                   'color', 'alpha', 'norm', 'vmin', 'vmax', 'cmap']
 PARAMS['refresh'] = ['xlim', 'ylim']
 PARAMS['legend'] = ['bbox_to_anchor', 'loc', 'borderaxespad', 'ncol']
