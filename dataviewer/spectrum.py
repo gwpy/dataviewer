@@ -361,7 +361,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 count += 1
             if count == 0:
                 return
-            # calculated new average
+            # calculate new average
             if self.method == 'median-mean' and len(SPECTRA[channel]) == 1:
                 spec = SPECTRA[channel][0].value
             elif self.method == 'median-mean':
