@@ -242,16 +242,34 @@ class Monitor(TimedAnimation):
                     if not isinstance(val, (list, tuple)):
                         val = [val] * len(self._fig.axes)
                     for ax, v in izip_longest(self._fig.axes, val):
-                        getattr(ax, 'set_%s' % key)(v)
+                        try:
+                            getattr(ax, 'set_%s' % key)(v)
+                        except ValueError as e:
+                            if 'too many values to unpack' in e:
+                                getattr(ax, 'set_%s' % key)(*v)
+                            else:
+                                raise
             elif key in AXES_PARAMS:
                 if not (isinstance(val, (list, tuple)) and
                         isinstance(val[0], (list, tuple, basestring))):
                     val = [val] * len(self._fig.axes)
                 for ax, v in zip(self._fig.axes, val):
-                    getattr(ax, 'set_%s' % key)(v)
+                    try:
+                        getattr(ax, 'set_%s' % key)(v)
+                    except ValueError as e:
+                        if 'too many values to unpack' in e:
+                            getattr(ax, 'set_%s' % key)(*v)
+                        else:
+                            raise
             else:
                 for ax in self._fig.axes:
-                    getattr(ax, 'set_%s' % key)(val)
+                    try:
+                        getattr(ax, 'set_%s' % key)(val)
+                    except ValueError as e:
+                        if 'too many values to unpack' in e:
+                            getattr(ax, 'set_%s' % key)(*val)
+                        else:
+                            raise
 
     # -------------------------------------------------------------------------
     # Event connections
