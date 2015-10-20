@@ -48,16 +48,15 @@ BTN_HEIGHT = 0.05
 # fixed parameters
 PARAMS = {}
 PARAMS['figure'] = ['figsize']
-PARAMS['init'] = ['title', 'subtitle', 'xlabel', 'ylabel', 'xscale', 'yscale',
-                  'suptitle']
-PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'linesize', 'markersize',
+PARAMS['init'] = ['title', 'xlabel', 'ylabel', 'xscale', 'yscale']
+PARAMS['draw'] = ['marker', 'linestyle', 'linewidth', 'markersize',
                   'color', 'alpha', 'norm', 'vmin', 'vmax', 'cmap']
 PARAMS['refresh'] = ['xlim', 'ylim']
 PARAMS['legend'] = ['bbox_to_anchor', 'loc', 'borderaxespad', 'ncol']
 PARAMS['colorbar'] = ['log', 'clim', 'label']
 
-FIGURE_PARAMS = ['title', 'subtitle']
-AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel']
+FIGURE_PARAMS = ['title']
+AXES_PARAMS = ['xlim', 'ylim', 'xlabel', 'ylabel', 'xscale', 'yscale']
 
 
 
@@ -85,7 +84,7 @@ class Monitor(TimedAnimation):
             fig = self.init_figure()
         # generate monitor
         self.interval = interval
-        super(Monitor, self).__init__(fig, interval=int(interval * 1000),
+        super(Monitor, self).__init__(fig, interval=int(100),
                                       blit=blit, repeat=repeat, **kwargs)
 
         self.figname = figname
@@ -243,16 +242,34 @@ class Monitor(TimedAnimation):
                     if not isinstance(val, (list, tuple)):
                         val = [val] * len(self._fig.axes)
                     for ax, v in izip_longest(self._fig.axes, val):
-                        getattr(ax, 'set_%s' % key)(v)
+                        try:
+                            getattr(ax, 'set_%s' % key)(v)
+                        except ValueError as e:
+                            if 'too many values to unpack' in e:
+                                getattr(ax, 'set_%s' % key)(*v)
+                            else:
+                                raise
             elif key in AXES_PARAMS:
                 if not (isinstance(val, (list, tuple)) and
                         isinstance(val[0], (list, tuple, basestring))):
                     val = [val] * len(self._fig.axes)
                 for ax, v in zip(self._fig.axes, val):
-                    getattr(ax, 'set_%s' % key)(v)
+                    try:
+                        getattr(ax, 'set_%s' % key)(v)
+                    except ValueError as e:
+                        if 'too many values to unpack' in e:
+                            getattr(ax, 'set_%s' % key)(*v)
+                        else:
+                            raise
             else:
                 for ax in self._fig.axes:
-                    getattr(ax, 'set_%s' % key)(val)
+                    try:
+                        getattr(ax, 'set_%s' % key)(val)
+                    except ValueError as e:
+                        if 'too many values to unpack' in e:
+                            getattr(ax, 'set_%s' % key)(*val)
+                        else:
+                            raise
 
     # -------------------------------------------------------------------------
     # Event connections

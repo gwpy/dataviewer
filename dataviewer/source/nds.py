@@ -201,7 +201,7 @@ class NDSDataIterator(NDSDataSource):
                 self.logger.error('RuntimeError caught: %s' % str(e))
                 if att < self.attempts:
                     att += 1
-                    wait_time = att / 4 + 1
+                    wait_time = att / 3 + 1
                     self.logger.warning(
                         'Attempting to reconnect to the nds server... %d/%d'
                         % (att, self.attempts))

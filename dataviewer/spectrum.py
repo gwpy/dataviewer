@@ -246,8 +246,8 @@ class SpectrumMonitor(TimeSeriesMonitor):
                     df = ref_spec.values()[0].df.value
 
                 for spec in cha_spec.values() + ref_spec.values():
-                    fmin = max(fmin, spec.span.start)
-                    fmax = min(fmax, spec.span.end)
+                    fmin = max(fmin, spec.xspan.start)
+                    fmax = min(fmax, spec.xspan.end)
                     if abs(spec.df.value - df) > df_tolerance:
                         raise CombinationError('Cannot operate on spectra with'
                                                ' different df')
@@ -282,18 +282,24 @@ class SpectrumMonitor(TimeSeriesMonitor):
         def _new_axes():
             ax = self._fig._add_new_axes(self._fig._DefaultAxesClass.name)
             for _, plotparams in self._references.iteritems():
-                spec = plotparams.pop('spectrum')
-                ax.plot(spec, **plotparams)
+                ppms = plotparams.copy()
+                spec = ppms.pop('spectrum')
+                ax.plot(spec, **ppms)
                 self.legend = ax.legend(**self.params['legend'])
 
         if self.sep:
             for n in range(len(self.channels) + len(self.combinations)):
                 _new_axes()
-            for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
-                ax.set_xlabel('')
         else:
             _new_axes()
         self.set_params('init')
+        # remove repeated titles and xlabels
+        for i, ax in enumerate(self._fig.get_axes(self.AXES_CLASS.name)):
+            if i != (len(self._fig.get_axes(self.AXES_CLASS.name)) - 1):
+                ax.set_xlabel('')
+            if i != 0:
+                ax.set_title('')
+
         self.set_params('refresh')
         # set grids
         for ax in self._fig.axes:
@@ -301,8 +307,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 ax.grid('on', 'both', 'x')
             if ax.get_yscale() == 'log':
                 ax.grid('on', 'both', 'y')
-
-        self._fig.add_colorbar(visible=False)
+            self._fig.add_colorbar(visible=False, ax=ax)
         return self._fig
 
     def update_data(self, new, gap='pad', pad=0):
@@ -343,7 +348,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
 
             count = 0
             # calculate new FFTs
-            while fftepoch + self.fftlength <= new[channel].span[-1]:
+            while int(fftepoch + self.fftlength) <= int(new[channel].span[-1]):
                 fdata = new[channel].crop(fftepoch, fftepoch + self.fftlength)
                 fft = fdata.asd(self.fftlength, self.overlap, method=method,
                                 **self.window)
@@ -356,7 +361,7 @@ class SpectrumMonitor(TimeSeriesMonitor):
                 count += 1
             if count == 0:
                 return
-            # calculated new average
+            # calculate new average
             if self.method == 'median-mean' and len(SPECTRA[channel]) == 1:
                 spec = SPECTRA[channel][0].value
             elif self.method == 'median-mean':

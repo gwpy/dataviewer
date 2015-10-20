@@ -170,9 +170,10 @@ def from_ini(filepath, ifo=None):
             val = safe_eval(val)
             if param not in cparams:
                 cparams[param] = []
-            while len(cparams[param]) < i:
+            while len(cparams[param]) < len(channels):
                 cparams[param].append(None)
-            cparams[param].append(val)
+            cparams[param][i] = val
+
 
     # get reference parameters
     # reference parameters will be sent to the monitor in a dictionary

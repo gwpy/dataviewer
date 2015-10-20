@@ -214,9 +214,13 @@ class SpectrogramMonitor(TimeSeriesMonitor):
 
         for _ in range(len(self.channels)):
             _new_axes()
-        for ax in self._fig.get_axes(self.AXES_CLASS.name)[:-1]:
-            ax.set_xlabel('')
         self.set_params('init')
+        for i, ax in enumerate(self._fig.get_axes(self.AXES_CLASS.name)):
+            if i != (len(self._fig.get_axes(self.AXES_CLASS.name)) - 1):
+                ax.set_xlabel('')
+            if i != 0:
+                ax.set_title('')
+
         self.set_params('refresh')
         return self._fig
 
@@ -230,14 +234,15 @@ class SpectrogramMonitor(TimeSeriesMonitor):
             s = ('The available data starts at gps %d '
                  'which. is after the end of the last spectrogram (gps %d)'
                  ': a segment is missing and will be skipped!')
-            self.logger.warning(s, (new[self.channels[0]][0].span[0],
-                                    self.epoch))
+            self.logger.warning(s, new[self.channels[0]][0].span[0],
+                                self.epoch)
             self.epoch = new[self.channels[0]][0].span[0]
         # be sure that the first cycle is syncronized with the buffer
         if not self.spectrograms.data:
             self.epoch = new[self.channels[0]][0].span[0]
         self.olepoch = self.epoch
-        while new[self.channels[0]][0].span[-1] >= (self.epoch + self.stride):
+        while int(new[self.channels[0]][0].span[-1]) >=\
+                int(self.epoch + self.stride):
             # data buffer will return dict of 1-item lists, so reform to tsd
             _new = TimeSeriesDict((key, val[0].crop(self.epoch, self.epoch +
                                                     self.stride))
@@ -294,12 +299,12 @@ class SpectrogramMonitor(TimeSeriesMonitor):
                 coloraxes[i]
             except IndexError:
                 cbparams = {}
-                for key in self.params['colorbar']:
-                    try:
-                        if self.params['colorbar'][key][i]:
-                            cbparams[key] = self.params['colorbar'][key][i]
-                    except IndexError:
-                        pass
+                for key, val in self.params['colorbar'].iteritems():
+                    if not (isinstance(val, (list, tuple)) and
+                                isinstance(val[0], (list, tuple, basestring))):
+                        cbparams[key] = self.params['colorbar'][key]
+                    else:
+                        cbparams[key] = self.params['colorbar'][key][i]
                 try:
                     self._fig.add_colorbar(mappable=coll, ax=ax, **cbparams)
                 except Exception as e:
